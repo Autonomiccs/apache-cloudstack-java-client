@@ -24,6 +24,8 @@ package br.com.autonomiccs.apacheCloudStack.client;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.StringWriter;
+import java.io.UnsupportedEncodingException;
+import java.net.URLEncoder;
 import java.nio.charset.Charset;
 import java.security.KeyManagementException;
 import java.security.KeyStoreException;
@@ -74,7 +76,7 @@ public class ApacheCloudStackClient {
      * This flag indicates if we are going to validade the server certificate in case of HTTPS connections.
      * The default value is 'true', meaning that we always validate the server HTTPS certificate.
      */
-    private boolean validateServerHttpsCertificate = true;
+    protected boolean validateServerHttpsCertificate = true;
 
     private Gson gson = new GsonBuilder().create();
     private Logger logger = LoggerFactory.getLogger(getClass());
@@ -101,7 +103,7 @@ public class ApacheCloudStackClient {
      * adds the suffix '{@value #CLOUDSTACK_BASE_ENDPOINT_URL_SUFFIX}' if it does have it.
      * It uses the method {@link #appendUrlSuffix(String)} to execute the appending.
      */
-    private String adjustUrlIfNeeded(String url) {
+    protected String adjustUrlIfNeeded(String url) {
         if (!StringUtils.endsWith(url, "/client")) {
             url = appendUrlSuffix(url);
         }
@@ -112,7 +114,7 @@ public class ApacheCloudStackClient {
      * Appends the suffix '{@value #CLOUDSTACK_BASE_ENDPOINT_URL_SUFFIX}' at the end of the given URL.
      * If it is needed, it will also add, a '/' before the suffix is appended to the URL.
      */
-    private String appendUrlSuffix(String url) {
+    protected String appendUrlSuffix(String url) {
         if (StringUtils.endsWith(url, "/")) {
             return url + CLOUDSTACK_BASE_ENDPOINT_URL_SUFFIX;
         }
@@ -146,7 +148,7 @@ public class ApacheCloudStackClient {
      *  It creates an {@link CloseableHttpClient} object.
      *  If {@link #validateServerHttpsCertificate} indicates that we should not validate HTTPS server certificate, we use an unsecure SSL factory; the insecure factory is created using {@link #createUnsecureSslFactory()}.
      */
-    private CloseableHttpClient createHttpClient() {
+    protected CloseableHttpClient createHttpClient() {
         HttpClientBuilder httpClientBuilder = HttpClientBuilder.create();
         if (!validateServerHttpsCertificate) {
             SSLConnectionSocketFactory sslsf = createUnsecureSslFactory();
@@ -159,10 +161,10 @@ public class ApacheCloudStackClient {
      * This method creates an insecure SSL factory that will trust on self signed certificates.
      * For that we use {@link TrustSelfSignedStrategy}.
      */
-    private SSLConnectionSocketFactory createUnsecureSslFactory() {
+    protected SSLConnectionSocketFactory createUnsecureSslFactory() {
         SSLContextBuilder builder = new SSLContextBuilder();
         try {
-            builder.loadTrustMaterial(null, new TrustSelfSignedStrategy());
+            builder.loadTrustMaterial(new TrustSelfSignedStrategy());
             return new SSLConnectionSocketFactory(builder.build());
         } catch (NoSuchAlgorithmException | KeyStoreException | KeyManagementException e) {
             throw new ApacheCloudStackClientRuntimeException(e);
@@ -172,7 +174,7 @@ public class ApacheCloudStackClient {
     /**
      * It retrieves the response status as a {@link String}
      */
-    private String getResponseAsString(CloseableHttpResponse response) throws IOException {
+    protected String getResponseAsString(CloseableHttpResponse response) throws IOException {
         InputStream responseContent = response.getEntity().getContent();
         StringWriter writer = new StringWriter();
         IOUtils.copy(responseContent, writer, Charset.defaultCharset());
@@ -187,7 +189,7 @@ public class ApacheCloudStackClient {
      * Therefore, it will create a command query string following the CloudStack specifications using method {@link #createCommandString(ApacheCloudStackRequest)};
      * and then, create the signature using the method {@link #createSignature(String)} and append it to the URL.
      */
-    private String createApacheCloudStackApiUrlRequest(ApacheCloudStackRequest request) {
+    protected String createApacheCloudStackApiUrlRequest(ApacheCloudStackRequest request) {
         StringBuilder urlRequest = new StringBuilder(url + APACHE_CLOUDSTACK_API_ENDPOINT);
         urlRequest.append("?");
 
@@ -203,7 +205,7 @@ public class ApacheCloudStackClient {
      * Creates a signature (HMAC-sha1) with the {@link #ApacheCloudStackUser#getSecretKey()} and the given queryString
      * The returner signature is encoded in Base64.
      */
-    private String createSignature(String queryString) {
+    protected String createSignature(String queryString) {
         byte[] signatureBytes = HmacUtils.hmacSha1(apacheCloudStackUser.getSecretKey(), queryString.toLowerCase());
         return Base64.encodeBase64String(signatureBytes);
     }
@@ -212,14 +214,28 @@ public class ApacheCloudStackClient {
      *  It creates the command query string, placing the parameters in alphabetical order.
      *  To execute the sorting, it uses the {@link #createSortedCommandQueryList(ApacheCloudStackRequest)} method.
      */
-    private String createCommandString(ApacheCloudStackRequest request) {
+    protected String createCommandString(ApacheCloudStackRequest request) {
         List<ApacheCloudStackApiCommandParameter> queryCommand = createSortedCommandQueryList(request);
 
         StringBuilder commandString = new StringBuilder();
         for (ApacheCloudStackApiCommandParameter param : queryCommand) {
-            commandString.append(String.format("%s=%s&", param.getName(), Objects.toString(param.getValue()).replaceAll("\\+", "%20")));
+            String value = getUrlEncodedValue(param.getValue());
+            commandString.append(String.format("%s=%s&", param.getName(), value));
         }
         return commandString.toString().substring(0, commandString.length() - 1);
+    }
+
+    /**
+     *  This method encodes the parameter value as specified by Apache CloudStack
+     */
+    protected String getUrlEncodedValue(Object paramValue) {
+        String value = Objects.toString(paramValue);
+        try {
+            value = URLEncoder.encode(value, "UTF-8");
+        } catch (UnsupportedEncodingException e) {
+            throw new ApacheCloudStackClientRuntimeException(e);
+        }
+        return value.replaceAll("\\+", "%20");
     }
 
     /**
@@ -228,7 +244,7 @@ public class ApacheCloudStackClient {
      *  It also adds a parameter called 'apiKey', with the value of {@link #ApacheCloudStackUser#getApiKey()} as value.
      *  Then, it will sort the parameters that are in a list in alphabetical order.
      */
-    private List<ApacheCloudStackApiCommandParameter> createSortedCommandQueryList(ApacheCloudStackRequest request) {
+    protected List<ApacheCloudStackApiCommandParameter> createSortedCommandQueryList(ApacheCloudStackRequest request) {
         List<ApacheCloudStackApiCommandParameter> queryCommand = new ArrayList<>();
         queryCommand.addAll(request.getParameters());
         queryCommand.add(new ApacheCloudStackApiCommandParameter("command", request.getCommand()));
