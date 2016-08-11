@@ -33,16 +33,16 @@ public class ApacheCloudStackClientRequestRuntimeException extends RuntimeExcept
     /**
      * Status of the HTTP request that generated this exception
      */
-    private int statusCode;
+    private final int statusCode;
     /**
      * Response of the HTTP request that generated this exception
      */
-    private String response;
+    private final String response;
 
     /**
      * Command request that generated the error
      */
-    private String commandRequest;
+    private final String commandRequest;
 
     public ApacheCloudStackClientRequestRuntimeException(int statusCode, String responseAsString, String commandRequest) {
         this.statusCode = statusCode;
