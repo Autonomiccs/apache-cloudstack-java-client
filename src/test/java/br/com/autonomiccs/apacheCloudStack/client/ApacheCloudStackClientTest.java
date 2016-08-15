@@ -24,17 +24,32 @@ package br.com.autonomiccs.apacheCloudStack.client;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.MalformedURLException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import org.apache.http.Header;
+import org.apache.http.HeaderElement;
 import org.apache.http.HttpEntity;
+import org.apache.http.NameValuePair;
 import org.apache.http.StatusLine;
 import org.apache.http.client.ClientProtocolException;
+import org.apache.http.client.CookieStore;
+import org.apache.http.client.entity.UrlEncodedFormEntity;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.client.protocol.HttpClientContext;
+import org.apache.http.cookie.Cookie;
+import org.apache.http.impl.client.BasicCookieStore;
 import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.cookie.BasicClientCookie;
+import org.apache.http.message.BasicHeader;
+import org.apache.http.message.BasicHeaderElement;
+import org.apache.http.message.BasicNameValuePair;
+import org.apache.http.protocol.HttpContext;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -56,7 +71,8 @@ public class ApacheCloudStackClientTest {
     @Mock
     private ApacheCloudStackUser apacheCloudStackUser;
 
-    private String cloudStackUrl = "https://cloud.domain.com/client";
+    private String cloudStackDomain = "cloud.domain.com";
+    private String cloudStackUrl = "https://" + cloudStackDomain + "/client";
 
     @Before
     public void setup() {
@@ -103,17 +119,20 @@ public class ApacheCloudStackClientTest {
     }
 
     private void configureMocksExecuteTestAndVerifyForMethodExecuteRequest(int requestStatusCode) throws IOException, ClientProtocolException {
-        Mockito.doReturn(cloudStackUrl).when(apacheCloudStackClient).createApacheCloudStackApiUrlRequest(Mockito.any(ApacheCloudStackRequest.class));
+        Mockito.doReturn(cloudStackUrl).when(apacheCloudStackClient).createApacheCloudStackApiUrlRequest(Mockito.any(ApacheCloudStackRequest.class), Mockito.eq(true));
 
         CloseableHttpClient httpClientMock = Mockito.mock(CloseableHttpClient.class);
+        HttpContext httpContextMock = Mockito.mock(HttpContext.class);
         CloseableHttpResponse closeableHttpResponseMock = Mockito.mock(CloseableHttpResponse.class);
         StatusLine statusLineMock = Mockito.mock(StatusLine.class);
 
         Mockito.when(statusLineMock.getStatusCode()).thenReturn(requestStatusCode);
         Mockito.when(closeableHttpResponseMock.getStatusLine()).thenReturn(statusLineMock);
-        Mockito.when(httpClientMock.execute(Mockito.any(HttpGet.class))).thenReturn(closeableHttpResponseMock);
+        Mockito.when(httpClientMock.execute(Mockito.any(HttpGet.class), Mockito.eq(httpContextMock))).thenReturn(closeableHttpResponseMock);
         Mockito.when(apacheCloudStackClient.createHttpClient()).thenReturn(httpClientMock);
-
+        Mockito.when(apacheCloudStackClient.apacheCloudStackUser.getApiKey()).thenReturn("apiKey");
+        Mockito.doReturn(httpContextMock).when(apacheCloudStackClient).createHttpContextWithAuthenticatedSessionUsingUserCredentialsIfNeeded(Mockito.eq(httpClientMock),
+                Mockito.eq(true));
         String responseString = "responseAsString";
         Mockito.doReturn(responseString).when(apacheCloudStackClient).getResponseAsString(Mockito.eq(closeableHttpResponseMock));
 
@@ -121,16 +140,17 @@ public class ApacheCloudStackClientTest {
         Assert.assertEquals(responseString, returnOfExecuteRequest);
 
         InOrder inOrder = Mockito.inOrder(apacheCloudStackClient, httpClientMock, closeableHttpResponseMock, statusLineMock);
-        inOrder.verify(apacheCloudStackClient).createApacheCloudStackApiUrlRequest(Mockito.any(ApacheCloudStackRequest.class));
+        inOrder.verify(apacheCloudStackClient).createApacheCloudStackApiUrlRequest(Mockito.any(ApacheCloudStackRequest.class), Mockito.eq(true));
         inOrder.verify(apacheCloudStackClient).createHttpClient();
-        inOrder.verify(httpClientMock).execute(Mockito.any(HttpGet.class));
+        inOrder.verify(httpClientMock).execute(Mockito.any(HttpGet.class), Mockito.eq(httpContextMock));
         inOrder.verify(closeableHttpResponseMock).getStatusLine();
         inOrder.verify(statusLineMock).getStatusCode();
+        inOrder.verify(httpClientMock).close();
     }
 
     @Test(expected = ApacheCloudStackClientRuntimeException.class)
     public void executeRequestTestExceptionWhenExecutingRequest() throws IOException, ClientProtocolException {
-        Mockito.doReturn(cloudStackUrl).when(apacheCloudStackClient).createApacheCloudStackApiUrlRequest(Mockito.any(ApacheCloudStackRequest.class));
+        Mockito.doReturn(cloudStackUrl).when(apacheCloudStackClient).createApacheCloudStackApiUrlRequest(Mockito.any(ApacheCloudStackRequest.class), Mockito.eq(true));
 
         CloseableHttpClient httpClientMock = Mockito.mock(CloseableHttpClient.class);
 
@@ -138,6 +158,7 @@ public class ApacheCloudStackClientTest {
         Mockito.when(apacheCloudStackClient.createHttpClient()).thenReturn(httpClientMock);
 
         apacheCloudStackClient.executeRequest(Mockito.mock(ApacheCloudStackRequest.class));
+        Mockito.verify(httpClientMock).close();
     }
 
     @Test
@@ -155,7 +176,7 @@ public class ApacheCloudStackClientTest {
         CloseableHttpClient httpClient = apacheCloudStackClient.createHttpClient();
 
         Assert.assertNotNull(httpClient);
-        Mockito.verify(apacheCloudStackClient, Mockito.times(numberOfCreateUnsecureSslFactoryCalls)).createUnsecureSslFactory();
+        Mockito.verify(apacheCloudStackClient, Mockito.times(numberOfCreateUnsecureSslFactoryCalls)).createInsecureSslFactory();
     }
 
     @Test
@@ -176,7 +197,7 @@ public class ApacheCloudStackClientTest {
     }
 
     @Test
-    public void createApacheCloudStackApiUrlRequestTest() {
+    public void createApacheCloudStackApiUrlRequestTestWithSignature() {
         ApacheCloudStackRequest apacheCloudStackRequestMock = Mockito.mock(ApacheCloudStackRequest.class);
 
         String queryString = "queryString";
@@ -185,12 +206,29 @@ public class ApacheCloudStackClientTest {
         String signatureValue = "signatureValue";
         Mockito.doReturn(signatureValue).when(apacheCloudStackClient).createSignature(Mockito.eq(queryString));
 
-        String urlRequestReturned = apacheCloudStackClient.createApacheCloudStackApiUrlRequest(apacheCloudStackRequestMock);
+        String urlRequestReturned = apacheCloudStackClient.createApacheCloudStackApiUrlRequest(apacheCloudStackRequestMock, true);
         Assert.assertEquals(cloudStackUrl + "/api?" + queryString + "&signature=" + signatureValue, urlRequestReturned);
 
         InOrder inOrder = Mockito.inOrder(apacheCloudStackClient);
         inOrder.verify(apacheCloudStackClient).createCommandString(Mockito.eq(apacheCloudStackRequestMock));
         inOrder.verify(apacheCloudStackClient).createSignature(Mockito.eq(queryString));
+        inOrder.verify(apacheCloudStackClient).getUrlEncodedValue(Mockito.eq(signatureValue));
+    }
+
+    @Test
+    public void createApacheCloudStackApiUrlRequestTestWithoutSignature() {
+        ApacheCloudStackRequest apacheCloudStackRequestMock = Mockito.mock(ApacheCloudStackRequest.class);
+
+        String queryString = "queryString";
+        Mockito.doReturn(queryString).when(apacheCloudStackClient).createCommandString(Mockito.eq(apacheCloudStackRequestMock));
+
+        String urlRequestReturned = apacheCloudStackClient.createApacheCloudStackApiUrlRequest(apacheCloudStackRequestMock, false);
+        Assert.assertEquals(cloudStackUrl + "/api?" + queryString, urlRequestReturned);
+
+        InOrder inOrder = Mockito.inOrder(apacheCloudStackClient);
+        inOrder.verify(apacheCloudStackClient).createCommandString(Mockito.eq(apacheCloudStackRequestMock));
+        inOrder.verify(apacheCloudStackClient, Mockito.times(0)).createSignature(Mockito.eq(queryString));
+        inOrder.verify(apacheCloudStackClient, Mockito.times(0)).getUrlEncodedValue(Mockito.anyString());
     }
 
     @Test
@@ -247,12 +285,13 @@ public class ApacheCloudStackClientTest {
     }
 
     @Test
-    public void createSortedCommandQueryListTest() {
+    public void createSortedCommandQueryListTestWithApiKey() {
         ApacheCloudStackRequest apacheCloudStackRequestMock = Mockito.mock(ApacheCloudStackRequest.class);
         Set<ApacheCloudStackApiCommandParameter> params = new HashSet<>();
 
         params.add(new ApacheCloudStackApiCommandParameter("param1", "value1"));
         Mockito.doReturn(params).when(apacheCloudStackRequestMock).getParameters();
+        Mockito.when(apacheCloudStackClient.apacheCloudStackUser.getApiKey()).thenReturn("apiKey");
 
         List<ApacheCloudStackApiCommandParameter> sortedCommandQueryList = apacheCloudStackClient.createSortedCommandQueryList(apacheCloudStackRequestMock);
 
@@ -265,7 +304,25 @@ public class ApacheCloudStackClientTest {
     }
 
     @Test
-    public void executeRequestAutoConverReturnToJavaObject() {
+    public void createSortedCommandQueryListTestWithourApiKey() {
+        ApacheCloudStackRequest apacheCloudStackRequestMock = Mockito.mock(ApacheCloudStackRequest.class);
+        Set<ApacheCloudStackApiCommandParameter> params = new HashSet<>();
+
+        params.add(new ApacheCloudStackApiCommandParameter("param1", "value1"));
+        Mockito.doReturn(params).when(apacheCloudStackRequestMock).getParameters();
+        Mockito.when(apacheCloudStackClient.apacheCloudStackUser.getApiKey()).thenReturn(null);
+
+        List<ApacheCloudStackApiCommandParameter> sortedCommandQueryList = apacheCloudStackClient.createSortedCommandQueryList(apacheCloudStackRequestMock);
+
+        Mockito.verify(apacheCloudStackRequestMock).getParameters();
+
+        Assert.assertEquals(2, sortedCommandQueryList.size());
+        Assert.assertEquals("command", sortedCommandQueryList.get(0).getName());
+        Assert.assertEquals("param1", sortedCommandQueryList.get(1).getName());
+    }
+
+    @Test
+    public void executeRequestAutoConvertReturnToJavaObject() {
         String jsonTest = "{attr1: 1, attr2: 'test'}";
 
         ApacheCloudStackRequest apacheCloudStackRequestMock = Mockito.mock(ApacheCloudStackRequest.class);
@@ -286,5 +343,199 @@ public class ApacheCloudStackClientTest {
     private class TestExecuteReturnObject {
         private int attr1;
         private String attr2;
+    }
+
+    @Test
+    public void createHttpContextWithAuthenticatedSessionUsingUserCredentialsIfNeededTestAuthenticationWithApiKeyAndSecretKey() {
+        CloseableHttpClient closeableHttpClientMock = Mockito.mock(CloseableHttpClient.class);
+        HttpContext basicHttpContext = apacheCloudStackClient.createHttpContextWithAuthenticatedSessionUsingUserCredentialsIfNeeded(closeableHttpClientMock, true);
+
+        Mockito.verify(apacheCloudStackClient, Mockito.times(0)).createHttpContextWithAuthenticatedSessionUsingUserCredentials(Mockito.any(closeableHttpClientMock.getClass()));
+        Assert.assertNotNull(basicHttpContext);
+    }
+
+    @Test
+    public void createHttpContextWithAuthenticatedSessionUsingUserCredentialsIfNeededTestAuthenticationWithUsernameAndPassword() {
+        CloseableHttpClient closeableHttpClientMock = Mockito.mock(CloseableHttpClient.class);
+        HttpContext httpContextMock = Mockito.mock(HttpContext.class);
+        Mockito.doReturn(httpContextMock).when(apacheCloudStackClient).createHttpContextWithAuthenticatedSessionUsingUserCredentials(Mockito.any(closeableHttpClientMock.getClass()));
+        HttpContext basicHttpContext = apacheCloudStackClient.createHttpContextWithAuthenticatedSessionUsingUserCredentialsIfNeeded(closeableHttpClientMock, false);
+
+        Mockito.verify(apacheCloudStackClient, Mockito.times(1)).createHttpContextWithAuthenticatedSessionUsingUserCredentials(Mockito.eq(closeableHttpClientMock));
+
+        Assert.assertNotNull(basicHttpContext);
+        Assert.assertEquals(httpContextMock, basicHttpContext);
+    }
+
+    @Test
+    public void createHttpContextWithAuthenticatedSessionUsingUserCredentialsTest() throws ClientProtocolException, IOException {
+        HttpPost httpPostMock = Mockito.mock(HttpPost.class);
+        Mockito.doReturn(httpPostMock).when(apacheCloudStackClient).createHttpPost();
+
+        NameValuePair nameValuePairMock = Mockito.mock(NameValuePair.class);
+        ArrayList<NameValuePair> paramsMock = new ArrayList<>(1);
+        paramsMock.add(nameValuePairMock);
+
+        Mockito.doReturn(paramsMock).when(apacheCloudStackClient).getParametersForLogin();
+
+        StatusLine statusLineMock = Mockito.mock(StatusLine.class);
+        CloseableHttpResponse closeableHttpResponseMock = Mockito.mock(CloseableHttpResponse.class);
+        CloseableHttpClient httpClientMock = Mockito.mock(CloseableHttpClient.class);
+
+        Mockito.doReturn(200).when(statusLineMock).getStatusCode();
+        Mockito.doReturn(statusLineMock).when(closeableHttpResponseMock).getStatusLine();
+        Mockito.doReturn(closeableHttpResponseMock).when(httpClientMock).execute(Mockito.eq(httpPostMock));
+
+        HttpContext httpContextMock = Mockito.mock(HttpContext.class);
+        Mockito.doReturn(httpContextMock).when(apacheCloudStackClient).createHttpContextWithCookies(Mockito.eq(closeableHttpResponseMock));
+        Mockito.doReturn("responseAsString").when(apacheCloudStackClient).getResponseAsString(Mockito.eq(closeableHttpResponseMock));
+
+        HttpContext httpContextAuthenticatedWithUsernamePassword = apacheCloudStackClient.createHttpContextWithAuthenticatedSessionUsingUserCredentials(httpClientMock);
+
+        Assert.assertEquals(httpContextMock, httpContextAuthenticatedWithUsernamePassword);
+
+        InOrder inOrder = Mockito.inOrder(httpPostMock, apacheCloudStackClient, statusLineMock, closeableHttpResponseMock, httpClientMock);
+        inOrder.verify(apacheCloudStackClient).createHttpPost();
+        inOrder.verify(apacheCloudStackClient).getParametersForLogin();
+        inOrder.verify(httpPostMock).setEntity(Mockito.any(UrlEncodedFormEntity.class));
+        inOrder.verify(httpClientMock).execute(Mockito.eq(httpPostMock));
+        inOrder.verify(closeableHttpResponseMock).getStatusLine();
+        inOrder.verify(statusLineMock).getStatusCode();
+        inOrder.verify(apacheCloudStackClient).getResponseAsString(Mockito.eq(closeableHttpResponseMock));
+        inOrder.verify(apacheCloudStackClient).createHttpContextWithCookies(Mockito.eq(closeableHttpResponseMock));
+    }
+
+    @Test(expected = ApacheCloudStackClientRuntimeException.class)
+    public void createHttpContextWithAuthenticatedSessionUsingUserCredentialsTestExceptionExecutingRequest() throws ClientProtocolException, IOException {
+        HttpPost httpPostMock = Mockito.mock(HttpPost.class);
+        Mockito.doReturn(httpPostMock).when(apacheCloudStackClient).createHttpPost();
+
+        NameValuePair nameValuePairMock = Mockito.mock(NameValuePair.class);
+        ArrayList<NameValuePair> paramsMock = new ArrayList<>(1);
+        paramsMock.add(nameValuePairMock);
+
+        Mockito.doReturn(paramsMock).when(apacheCloudStackClient).getParametersForLogin();
+
+        CloseableHttpClient httpClientMock = Mockito.mock(CloseableHttpClient.class);
+
+        Mockito.doThrow(IOException.class).when(httpClientMock).execute(Mockito.eq(httpPostMock));
+
+        apacheCloudStackClient.createHttpContextWithAuthenticatedSessionUsingUserCredentials(httpClientMock);
+    }
+
+    @Test
+    public void createHttpContextWithCookiesTest() {
+        CloseableHttpResponse closeableHttpResponseMock = Mockito.mock(CloseableHttpResponse.class);
+
+        Header[] headers = new Header[1];
+        Mockito.doReturn(headers).when(closeableHttpResponseMock).getAllHeaders();
+
+        Mockito.doNothing().when(apacheCloudStackClient).createAndAddCookiesOnStoreForHeaders(Mockito.any(BasicCookieStore.class), Mockito.eq(headers));
+        HttpContext httpContextWithCookies = apacheCloudStackClient.createHttpContextWithCookies(closeableHttpResponseMock);
+
+        Assert.assertNotNull(httpContextWithCookies);
+        Assert.assertNotNull(httpContextWithCookies.getAttribute(HttpClientContext.COOKIE_STORE));
+
+        Mockito.verify(apacheCloudStackClient).createAndAddCookiesOnStoreForHeaders(Mockito.any(BasicCookieStore.class), Mockito.eq(headers));
+
+    }
+
+    @Test
+    public void createAndAddCookiesOnStoreForHeadersTest() {
+        Header[] headers = new Header[2];
+        headers[0] = new BasicHeader("Set-Cookie cookieName", "value1");
+        headers[1] = new BasicHeader("anyOtherCookie", "value2");
+
+        CookieStore cookieStoreMock = Mockito.mock(CookieStore.class);
+
+        Mockito.doNothing().when(apacheCloudStackClient).createAndAddCookiesOnStoreForHeader(Mockito.eq(cookieStoreMock), Mockito.any(Header.class));
+        apacheCloudStackClient.createAndAddCookiesOnStoreForHeaders(cookieStoreMock, headers);
+
+        Mockito.verify(apacheCloudStackClient).createAndAddCookiesOnStoreForHeader(Mockito.eq(cookieStoreMock), Mockito.eq(headers[0]));
+    }
+
+    public void createAndAddCookiesOnStoreForHeaderTest() {
+        CookieStore cookieStoreMock = Mockito.mock(CookieStore.class);
+        Header headerMock = Mockito.mock(Header.class);
+
+        HeaderElement headerElementMock1 = Mockito.mock(HeaderElement.class);
+
+        List<HeaderElement> headerElements = new ArrayList<>(1);
+        headerElements.add(headerElementMock1);
+
+        Mockito.doReturn(headerElements).when(headerMock).getElements();
+
+        Cookie cookieMock = Mockito.mock(Cookie.class);
+        Mockito.doReturn(cookieMock).when(apacheCloudStackClient).createCookieForHeaderElement(Mockito.eq(headerElementMock1));
+
+        apacheCloudStackClient.createAndAddCookiesOnStoreForHeader(cookieStoreMock, headerMock);
+
+        Mockito.verify(headerMock).getElements();
+        Mockito.verify(apacheCloudStackClient).createCookieForHeaderElement(Mockito.eq(headerElementMock1));
+    }
+
+    @Test
+    public void createCookieForHeaderElementTest() {
+        String cookiePath = "/client/api";
+
+        String paramName = "paramName1";
+        String paramValue = "paramVale1";
+        NameValuePair[] parameters = new NameValuePair[1];
+        parameters[0] = new BasicNameValuePair(paramName, paramValue);
+
+        String headerName = "headerElementName";
+        String headerValue = "headerElementValue";
+        HeaderElement headerElement = new BasicHeaderElement(headerName, headerValue, parameters);
+
+        Mockito.doNothing().when(apacheCloudStackClient).configureDomainForCookie(Mockito.any(BasicClientCookie.class));
+
+        BasicClientCookie cookieForHeaderElement = apacheCloudStackClient.createCookieForHeaderElement(headerElement);
+
+        Assert.assertNotNull(cookieForHeaderElement);
+        Assert.assertEquals(headerName, cookieForHeaderElement.getName());
+        Assert.assertEquals(headerValue, cookieForHeaderElement.getValue());
+        Assert.assertEquals(paramValue, cookieForHeaderElement.getAttribute(paramName));
+        Assert.assertEquals(cookiePath, cookieForHeaderElement.getPath());
+
+        Mockito.verify(apacheCloudStackClient).configureDomainForCookie(Mockito.eq(cookieForHeaderElement));
+    }
+
+    @Test
+    public void configureDomainForCookieTest() {
+        BasicClientCookie basicClientCookie = new BasicClientCookie("name", "value");
+        apacheCloudStackClient.configureDomainForCookie(basicClientCookie);
+
+        Assert.assertEquals(cloudStackDomain, basicClientCookie.getDomain());
+    }
+
+    @Test
+    public void createHttpPostTest() throws MalformedURLException {
+        HttpPost httpPost = apacheCloudStackClient.createHttpPost();
+
+        Assert.assertEquals(cloudStackUrl + "/api", httpPost.getURI().toURL().toString());
+        Assert.assertEquals("application/x-www-form-urlencoded", httpPost.getFirstHeader("Content-Type").getValue());
+    }
+
+    public void getParametersForLoginTest() {
+        Mockito.doReturn("userName").when(apacheCloudStackUser).getUsername();
+        Mockito.doReturn("password").when(apacheCloudStackUser).getPassword();
+        Mockito.doReturn("domain").when(apacheCloudStackUser).getDomain();
+
+        List<NameValuePair> parametersForLogin = apacheCloudStackClient.getParametersForLogin();
+
+        Assert.assertNotNull(parametersForLogin);
+        Assert.assertEquals(4, parametersForLogin.size());
+
+        Assert.assertEquals("command", parametersForLogin.get(0).getValue());
+        Assert.assertEquals("login", parametersForLogin.get(0).getName());
+
+        Assert.assertEquals("username", parametersForLogin.get(1).getValue());
+        Assert.assertEquals("userName", parametersForLogin.get(1).getName());
+
+        Assert.assertEquals("password", parametersForLogin.get(2).getValue());
+        Assert.assertEquals("password", parametersForLogin.get(2).getName());
+
+        Assert.assertEquals("domain", parametersForLogin.get(3).getValue());
+        Assert.assertEquals("domain", parametersForLogin.get(3).getName());
     }
 }
