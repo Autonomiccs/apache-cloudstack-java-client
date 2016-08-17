@@ -147,11 +147,25 @@ public class ApacheCloudStackClient {
     public String executeRequest(ApacheCloudStackRequest request) {
         boolean isSecretKeyApiKeyAuthenticationMechanism = StringUtils.isNotBlank(this.apacheCloudStackUser.getApiKey());
         String urlRequest = createApacheCloudStackApiUrlRequest(request, isSecretKeyApiKeyAuthenticationMechanism);
-
+        logger.debug("Executing request[%s].", urlRequest);
         CloseableHttpClient httpClient = createHttpClient();
+        HttpContext httpContext = createHttpContextWithAuthenticatedSessionUsingUserCredentialsIfNeeded(httpClient, isSecretKeyApiKeyAuthenticationMechanism);
+        try {
+            return executeRequestGetResponseAsString(urlRequest, httpClient, httpContext);
+        } finally {
+            if (!isSecretKeyApiKeyAuthenticationMechanism) {
+                executeUserLogout(httpClient, httpContext);
+            }
+            HttpClientUtils.closeQuietly(httpClient);
+        }
+    }
+
+    /**
+     * Executes the request with the given {@link HttpContext}.
+     */
+    protected String executeRequestGetResponseAsString(String urlRequest, CloseableHttpClient httpClient, HttpContext httpContext) {
         try {
             HttpRequestBase httpGetRequest = new HttpGet(urlRequest);
-            HttpContext httpContext = createHttpContextWithAuthenticatedSessionUsingUserCredentialsIfNeeded(httpClient, isSecretKeyApiKeyAuthenticationMechanism);
             CloseableHttpResponse response = httpClient.execute(httpGetRequest, httpContext);
             StatusLine requestStatus = response.getStatusLine();
             if (requestStatus.getStatusCode() == HttpStatus.SC_OK) {
@@ -161,9 +175,17 @@ public class ApacheCloudStackClient {
         } catch (IOException e) {
             logger.error(String.format("Error while executing request [%s]", urlRequest));
             throw new ApacheCloudStackClientRuntimeException(e);
-        } finally {
-            HttpClientUtils.closeQuietly(httpClient);
         }
+    }
+
+    /**
+     *  This method executes the user logout when using username/password/domain authentication.
+     *  The logout is executed calling the 'logout' command of the Apache CloudStack API.
+     */
+    protected void executeUserLogout(CloseableHttpClient httpClient, HttpContext httpContext) {
+        String urlRequest = createApacheCloudStackApiUrlRequest(new ApacheCloudStackRequest("logout").addParameter("response", "json"), false);
+        String returnOfLogout = executeRequestGetResponseAsString(urlRequest, httpClient, httpContext);
+        logger.debug("Logout result[%s]", returnOfLogout);
     }
 
     /**
@@ -204,7 +226,7 @@ public class ApacheCloudStackClient {
 
             CloseableHttpResponse loginResponse = httpClient.execute(httpPost);
             int statusCode = loginResponse.getStatusLine().getStatusCode();
-            if(statusCode != HttpStatus.SC_OK){
+            if (statusCode != HttpStatus.SC_OK) {
                 throw new ApacheCloudStackClientRequestRuntimeException(statusCode, getResponseAsString(loginResponse), "login");
             }
             logger.debug("Authentication response:[%s]", getResponseAsString(loginResponse));
