@@ -25,6 +25,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.StringWriter;
 import java.io.UnsupportedEncodingException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URLEncoder;
 import java.nio.charset.Charset;
 import java.security.KeyManagementException;
@@ -39,14 +41,30 @@ import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.codec.digest.HmacUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.http.Header;
+import org.apache.http.HeaderElement;
+import org.apache.http.HttpHost;
 import org.apache.http.HttpStatus;
+import org.apache.http.NameValuePair;
 import org.apache.http.StatusLine;
+import org.apache.http.client.CookieStore;
+import org.apache.http.client.entity.UrlEncodedFormEntity;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.client.methods.HttpRequestBase;
+import org.apache.http.client.protocol.HttpClientContext;
+import org.apache.http.client.utils.HttpClientUtils;
+import org.apache.http.client.utils.URIUtils;
 import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
 import org.apache.http.conn.ssl.TrustSelfSignedStrategy;
+import org.apache.http.impl.client.BasicCookieStore;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
+import org.apache.http.impl.cookie.BasicClientCookie;
+import org.apache.http.message.BasicNameValuePair;
+import org.apache.http.protocol.BasicHttpContext;
+import org.apache.http.protocol.HttpContext;
 import org.apache.http.ssl.SSLContextBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -91,7 +109,7 @@ public class ApacheCloudStackClient {
      * User credentials that can be used to access ApacheCloudStack.
      * They can be either a pair of secret key and API key or a triple of username, password and domain
      */
-    private ApacheCloudStackUser apacheCloudStackUser;
+    protected ApacheCloudStackUser apacheCloudStackUser;
 
     public ApacheCloudStackClient(String url, ApacheCloudStackUser apacheCloudStackUser) {
         this.url = adjustUrlIfNeeded(url);
@@ -127,12 +145,28 @@ public class ApacheCloudStackClient {
      * You should have in mind that if the parameter 'response' is not set, the default is 'XML'.
      */
     public String executeRequest(ApacheCloudStackRequest request) {
-        String urlRequest = createApacheCloudStackApiUrlRequest(request);
-
+        boolean isSecretKeyApiKeyAuthenticationMechanism = StringUtils.isNotBlank(this.apacheCloudStackUser.getApiKey());
+        String urlRequest = createApacheCloudStackApiUrlRequest(request, isSecretKeyApiKeyAuthenticationMechanism);
+        logger.debug("Executing request[%s].", urlRequest);
         CloseableHttpClient httpClient = createHttpClient();
-        HttpGet httpGetRequest = new HttpGet(urlRequest);
+        HttpContext httpContext = createHttpContextWithAuthenticatedSessionUsingUserCredentialsIfNeeded(httpClient, isSecretKeyApiKeyAuthenticationMechanism);
         try {
-            CloseableHttpResponse response = httpClient.execute(httpGetRequest);
+            return executeRequestGetResponseAsString(urlRequest, httpClient, httpContext);
+        } finally {
+            if (!isSecretKeyApiKeyAuthenticationMechanism) {
+                executeUserLogout(httpClient, httpContext);
+            }
+            HttpClientUtils.closeQuietly(httpClient);
+        }
+    }
+
+    /**
+     * Executes the request with the given {@link HttpContext}.
+     */
+    protected String executeRequestGetResponseAsString(String urlRequest, CloseableHttpClient httpClient, HttpContext httpContext) {
+        try {
+            HttpRequestBase httpGetRequest = new HttpGet(urlRequest);
+            CloseableHttpResponse response = httpClient.execute(httpGetRequest, httpContext);
             StatusLine requestStatus = response.getStatusLine();
             if (requestStatus.getStatusCode() == HttpStatus.SC_OK) {
                 return getResponseAsString(response);
@@ -145,23 +179,154 @@ public class ApacheCloudStackClient {
     }
 
     /**
+     *  This method executes the user logout when using username/password/domain authentication.
+     *  The logout is executed calling the 'logout' command of the Apache CloudStack API.
+     */
+    protected void executeUserLogout(CloseableHttpClient httpClient, HttpContext httpContext) {
+        String urlRequest = createApacheCloudStackApiUrlRequest(new ApacheCloudStackRequest("logout").addParameter("response", "json"), false);
+        String returnOfLogout = executeRequestGetResponseAsString(urlRequest, httpClient, httpContext);
+        logger.debug("Logout result[%s]", returnOfLogout);
+    }
+
+    /**
+     * According to the 'isSecretKeyApiKey AuthenticationMechanism' parameter this method creates an HttpContext that is used when executing requests.
+     * If the user has provided his/her API/secret keys, we return a {@link BasicHttpContext} object. Otherwise, we authenticate the user with his/her username/password/domain and return an {@link HttpContext} object that contains the authenticated session Id configured as a cookie.
+     */
+    protected HttpContext createHttpContextWithAuthenticatedSessionUsingUserCredentialsIfNeeded(CloseableHttpClient httpClient, boolean isSecretKeyApiKeyAuthenticationMechanism) {
+        if (isSecretKeyApiKeyAuthenticationMechanism) {
+            return new BasicHttpContext();
+        }
+        return createHttpContextWithAuthenticatedSessionUsingUserCredentials(httpClient);
+    }
+
+    /**
      *  It creates an {@link CloseableHttpClient} object.
-     *  If {@link #validateServerHttpsCertificate} indicates that we should not validate HTTPS server certificate, we use an unsecure SSL factory; the insecure factory is created using {@link #createUnsecureSslFactory()}.
+     *  If {@link #validateServerHttpsCertificate} indicates that we should not validate HTTPS server certificate, we use an insecure SSL factory; the insecure factory is created using {@link #createInsecureSslFactory()}.
      */
     protected CloseableHttpClient createHttpClient() {
         HttpClientBuilder httpClientBuilder = HttpClientBuilder.create();
         if (!validateServerHttpsCertificate) {
-            SSLConnectionSocketFactory sslsf = createUnsecureSslFactory();
+            SSLConnectionSocketFactory sslsf = createInsecureSslFactory();
             httpClientBuilder.setSSLSocketFactory(sslsf);
         }
         return httpClientBuilder.build();
     }
 
     /**
+     * This method creates an {@link HttpContext} with an authenticated JSESSIONID.
+     * The authentication is performed using username, password and domain that are provided by the user.
+     */
+    protected HttpContext createHttpContextWithAuthenticatedSessionUsingUserCredentials(CloseableHttpClient httpClient) {
+        HttpPost httpPost = createHttpPost();
+        List<NameValuePair> params = getParametersForLogin();
+
+        try {
+            UrlEncodedFormEntity postParams = new UrlEncodedFormEntity(params, "UTF-8");
+            httpPost.setEntity(postParams);
+
+            CloseableHttpResponse loginResponse = httpClient.execute(httpPost);
+            int statusCode = loginResponse.getStatusLine().getStatusCode();
+            if (statusCode != HttpStatus.SC_OK) {
+                throw new ApacheCloudStackClientRequestRuntimeException(statusCode, getResponseAsString(loginResponse), "login");
+            }
+            logger.debug("Authentication response:[%s]", getResponseAsString(loginResponse));
+
+            return createHttpContextWithCookies(loginResponse);
+        } catch (IOException e) {
+            throw new ApacheCloudStackClientRuntimeException(e);
+        }
+    }
+
+    /**
+     *  It creates an {@link HttpContext} object with a cookie store that will contain the cookies returned by the user in the {@link CloseableHttpResponse} that is received as parameter.
+     */
+    protected HttpContext createHttpContextWithCookies(CloseableHttpResponse loginResponse) {
+        CookieStore cookieStore = new BasicCookieStore();
+        createAndAddCookiesOnStoreForHeaders(cookieStore, loginResponse.getAllHeaders());
+        HttpContext httpContext = new BasicHttpContext();
+        httpContext.setAttribute(HttpClientContext.COOKIE_STORE, cookieStore);
+        return httpContext;
+    }
+
+    /**
+     *  For every header that contains the command 'Set-Cookie' it will call the method {@link #createAndAddCookiesOnStoreForHeader(CookieStore, Header)}
+     */
+    protected void createAndAddCookiesOnStoreForHeaders(CookieStore cookieStore, Header[] allHeaders) {
+        for (Header header : allHeaders) {
+            if (StringUtils.startsWithIgnoreCase(header.getName(), "Set-Cookie")) {
+                createAndAddCookiesOnStoreForHeader(cookieStore, header);
+            }
+        }
+    }
+
+    /**
+     * This method creates a cookie for every {@link HeaderElement} of the {@link Header} given as parameter.
+     * Then, it adds this newly created cookie into the {@link CookieStore} provided as parameter.
+     */
+    protected void createAndAddCookiesOnStoreForHeader(CookieStore cookieStore, Header header) {
+        for (HeaderElement element : header.getElements()) {
+            BasicClientCookie cookie = createCookieForHeaderElement(element);
+            cookieStore.addCookie(cookie);
+        }
+    }
+
+    /**
+     *  This method will create a {@link BasicClientCookie} with the given {@link HeaderElement}.
+     *  It sill set the cookie's name and value according to the {@link HeaderElement#getName()} and {@link HeaderElement#getValue()} methods.
+     *  Moreover, it will transport every {@link HeaderElement} parameter to the cookie using the {@link BasicClientCookie#setAttribute(String, String)}.
+     *  Additionally, it configures the cookie path ({@link BasicClientCookie#setPath(String)}) to value '/client/api' and the cookie domain using {@link #configureDomainForCookie(BasicClientCookie)} method.
+     */
+    protected BasicClientCookie createCookieForHeaderElement(HeaderElement element) {
+        BasicClientCookie cookie = new BasicClientCookie(element.getName(), element.getValue());
+        for (NameValuePair parameter : element.getParameters()) {
+            cookie.setAttribute(parameter.getName(), parameter.getValue());
+        }
+        cookie.setPath("/client/api");
+        configureDomainForCookie(cookie);
+        return cookie;
+    }
+
+    /**
+     *  It configures the cookie domain with the domain of the Apache CloudStack that is being accessed.
+     *  The domain is extracted from {@link #url} variable.
+     */
+    protected void configureDomainForCookie(BasicClientCookie cookie) {
+        try {
+            HttpHost httpHost = URIUtils.extractHost(new URI(url));
+            String domain = httpHost.getHostName();
+            cookie.setDomain(domain);
+        } catch (URISyntaxException e) {
+            throw new ApacheCloudStackClientRuntimeException(e);
+        }
+    }
+
+    /**
+     *  Creates an {@link HttpPost} object to be sent to Apache CloudStack API.
+     *  The content type configured for this request is 'application/x-www-form-urlencoded'.
+     */
+    protected HttpPost createHttpPost() {
+        HttpPost httpPost = new HttpPost(url + APACHE_CLOUDSTACK_API_ENDPOINT);
+        httpPost.addHeader("Content-Type", "application/x-www-form-urlencoded");
+        return httpPost;
+    }
+
+    /**
+     *  This method creates a list of {@link NameValuePair} and returns the data for login using username and password.
+     */
+    protected List<NameValuePair> getParametersForLogin() {
+        List<NameValuePair> params = new ArrayList<NameValuePair>(4);
+        params.add(new BasicNameValuePair("command", "login"));
+        params.add(new BasicNameValuePair("username", this.apacheCloudStackUser.getUsername()));
+        params.add(new BasicNameValuePair("password", this.apacheCloudStackUser.getPassword()));
+        params.add(new BasicNameValuePair("domain", this.apacheCloudStackUser.getDomain()));
+        return params;
+    }
+
+    /**
      * This method creates an insecure SSL factory that will trust on self signed certificates.
      * For that we use {@link TrustSelfSignedStrategy}.
      */
-    protected SSLConnectionSocketFactory createUnsecureSslFactory() {
+    protected SSLConnectionSocketFactory createInsecureSslFactory() {
         SSLContextBuilder builder = new SSLContextBuilder();
         try {
             builder.loadTrustMaterial(new TrustSelfSignedStrategy());
@@ -187,17 +352,19 @@ public class ApacheCloudStackClient {
     /**
      * This method creates transforms the given {@link ApacheCloudStackRequest} into a URL requeest for the Apache CloudStack API.
      * Therefore, it will create a command query string following the CloudStack specifications using method {@link #createCommandString(ApacheCloudStackRequest)};
-     * and then, create the signature using the method {@link #createSignature(String)} and append it to the URL.
+     * and then, if it needs, it creates the signature using the method {@link #createSignature(String)} and append it to the URL.
      */
-    protected String createApacheCloudStackApiUrlRequest(ApacheCloudStackRequest request) {
+    protected String createApacheCloudStackApiUrlRequest(ApacheCloudStackRequest request, boolean shouldSignAppendSignature) {
         StringBuilder urlRequest = new StringBuilder(url + APACHE_CLOUDSTACK_API_ENDPOINT);
         urlRequest.append("?");
 
         String queryString = createCommandString(request);
         urlRequest.append(queryString);
 
-        String signature = createSignature(queryString);
-        urlRequest.append("&signature=" + signature);
+        if (shouldSignAppendSignature) {
+            String signature = createSignature(queryString);
+            urlRequest.append("&signature=" + getUrlEncodedValue(signature));
+        }
         return urlRequest.toString();
     }
 
@@ -248,7 +415,9 @@ public class ApacheCloudStackClient {
         List<ApacheCloudStackApiCommandParameter> queryCommand = new ArrayList<>();
         queryCommand.addAll(request.getParameters());
         queryCommand.add(new ApacheCloudStackApiCommandParameter("command", request.getCommand()));
-        queryCommand.add(new ApacheCloudStackApiCommandParameter("apiKey", this.apacheCloudStackUser.getApiKey()));
+        if (StringUtils.isNotBlank(this.apacheCloudStackUser.getApiKey())) {
+            queryCommand.add(new ApacheCloudStackApiCommandParameter("apiKey", this.apacheCloudStackUser.getApiKey()));
+        }
         Collections.sort(queryCommand);
         return queryCommand;
     }

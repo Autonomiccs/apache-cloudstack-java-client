@@ -31,4 +31,8 @@ public class ApacheCloudStackClientRuntimeException extends RuntimeException {
         super(e);
     }
 
+    public ApacheCloudStackClientRuntimeException(String message) {
+        super(message);
+    }
+
 }
