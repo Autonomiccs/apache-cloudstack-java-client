@@ -59,9 +59,9 @@ import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.runners.MockitoJUnitRunner;
 
-import br.com.autonomiccs.apacheCloudStack.ApacheCloudStackClientRequestRuntimeException;
-import br.com.autonomiccs.apacheCloudStack.ApacheCloudStackClientRuntimeException;
 import br.com.autonomiccs.apacheCloudStack.client.beans.ApacheCloudStackUser;
+import br.com.autonomiccs.apacheCloudStack.exceptions.ApacheCloudStackClientRequestRuntimeException;
+import br.com.autonomiccs.apacheCloudStack.exceptions.ApacheCloudStackClientRuntimeException;
 
 @RunWith(MockitoJUnitRunner.class)
 public class ApacheCloudStackClientTest {
@@ -537,5 +537,19 @@ public class ApacheCloudStackClientTest {
 
         Assert.assertEquals("domain", parametersForLogin.get(3).getValue());
         Assert.assertEquals("domain", parametersForLogin.get(3).getName());
+    }
+
+    @Test
+    public void executeUserLogoutTest() {
+        String urlRequest = "urlRequest";
+
+        Mockito.doReturn(urlRequest).when(apacheCloudStackClient).createApacheCloudStackApiUrlRequest(Mockito.any(ApacheCloudStackRequest.class), Mockito.eq(false));
+        Mockito.doReturn("response").when(apacheCloudStackClient).executeRequestGetResponseAsString(Mockito.eq(urlRequest), Mockito.any(CloseableHttpClient.class), Mockito.any(HttpContext.class));
+
+        apacheCloudStackClient.executeUserLogout(Mockito.mock(CloseableHttpClient.class), Mockito.mock(HttpContext.class));
+
+        InOrder inOrder = Mockito.inOrder(apacheCloudStackClient);
+        inOrder.verify(apacheCloudStackClient).createApacheCloudStackApiUrlRequest(Mockito.any(ApacheCloudStackRequest.class), Mockito.eq(false));
+        inOrder.verify(apacheCloudStackClient).executeRequestGetResponseAsString(Mockito.eq(urlRequest), Mockito.any(CloseableHttpClient.class), Mockito.any(HttpContext.class));
     }
 }

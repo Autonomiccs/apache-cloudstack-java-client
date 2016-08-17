@@ -19,7 +19,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package br.com.autonomiccs.apacheCloudStack;
+package br.com.autonomiccs.apacheCloudStack.exceptions;
 
 /**
  *  This class is used to throw any of the exception that may happen during runtime
