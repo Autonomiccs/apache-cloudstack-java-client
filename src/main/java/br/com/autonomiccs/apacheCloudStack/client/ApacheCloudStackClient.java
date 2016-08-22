@@ -72,9 +72,9 @@ import org.slf4j.LoggerFactory;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
-import br.com.autonomiccs.apacheCloudStack.ApacheCloudStackClientRequestRuntimeException;
-import br.com.autonomiccs.apacheCloudStack.ApacheCloudStackClientRuntimeException;
 import br.com.autonomiccs.apacheCloudStack.client.beans.ApacheCloudStackUser;
+import br.com.autonomiccs.apacheCloudStack.exceptions.ApacheCloudStackClientRequestRuntimeException;
+import br.com.autonomiccs.apacheCloudStack.exceptions.ApacheCloudStackClientRuntimeException;
 
 /**
  * Apache CloudStack API client.
