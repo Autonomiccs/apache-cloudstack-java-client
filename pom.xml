@@ -219,6 +219,7 @@
 						<exclude>**/README.md</exclude>
 						<exclude>**/CHANGELOG.md</exclude>
 						<exclude>**/.github_changelog_generator</exclude>
+						<exclude>**/release.properties</exclude>
 					</excludes>
 				</configuration>
 				<executions>
