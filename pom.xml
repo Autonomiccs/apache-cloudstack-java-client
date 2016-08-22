@@ -56,7 +56,7 @@
 
 	<scm>
 		<connection>scm:git:https://github.com/Autonomiccs/apache-cloudstack-java-client.git</connection>
-		<developerConnection>scm:git:https://github.com/Autonomiccs/apache-cloudstack-java-client.git</developerConnection>
+		<developerConnection>scm:git:ssh://github.com/Autonomiccs/apache-cloudstack-java-client.git</developerConnection>
 		<url>https://github.com/Autonomiccs/apache-cloudstack-java-client</url>
 	</scm>
 
