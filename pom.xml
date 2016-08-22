@@ -262,7 +262,6 @@
 		</plugins>
 	</build>
 
-
 	<!-- coverage configuration -->
 	<profiles>
 		<profile>

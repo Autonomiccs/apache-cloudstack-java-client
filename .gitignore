@@ -18,6 +18,8 @@
 # specific language governing permissions and limitations
 # under the License.
 
+release.properties
+*.releaseBackup
 /target/
 *.class
 .classpath
