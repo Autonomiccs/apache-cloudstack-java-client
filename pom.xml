@@ -61,6 +61,10 @@
 	</scm>
 
 	<properties>
+		<!-- Disable Java doc validation for Java 8 doclint. 
+		It seems it complais a lot about missing @param and @returns, which we do not use so oftern. -->
+		<additionalparam>-Xdoclint:none</additionalparam>
+		
 		<jdkVersion>1.7</jdkVersion>
 		<maven.surefire.plugin.version>2.19.1</maven.surefire.plugin.version>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
