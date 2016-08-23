@@ -40,6 +40,13 @@ public class ApacheCloudStackApiCommandParameterTest {
     }
 
     @Test
+    public void equalsTestDifferentTypeOfObject() {
+        ApacheCloudStackApiCommandParameter apacheCloudStackApiCommandParameter = new ApacheCloudStackApiCommandParameter("param1", "value");
+
+        Assert.assertNotEquals(apacheCloudStackApiCommandParameter, new Object());
+    }
+
+    @Test
     public void hashCodeTest() {
         ApacheCloudStackApiCommandParameter apacheCloudStackApiCommandParameter = new ApacheCloudStackApiCommandParameter("param1", "value");
         HashCodeBuilder hashCodeBuilder = new HashCodeBuilder();
@@ -55,5 +62,12 @@ public class ApacheCloudStackApiCommandParameterTest {
         ApacheCloudStackApiCommandParameter apacheCloudStackApiCommandParameterOther = new ApacheCloudStackApiCommandParameter("param2", "value");
 
         Assert.assertEquals(-1, apacheCloudStackApiCommandParameter.compareTo(apacheCloudStackApiCommandParameterOther));
+    }
+
+    @Test
+    public void toStringTest() {
+        ApacheCloudStackApiCommandParameter apacheCloudStackApiCommandParameter = new ApacheCloudStackApiCommandParameter("param", "value");
+
+        Assert.assertEquals("param=value", apacheCloudStackApiCommandParameter.toString());
     }
 }
