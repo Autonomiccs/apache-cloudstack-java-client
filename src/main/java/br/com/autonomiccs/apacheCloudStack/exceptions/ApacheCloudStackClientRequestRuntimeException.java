@@ -28,7 +28,7 @@ import org.apache.http.HttpStatus;
  *   It contains the returned status code and the server response.
  */
 @SuppressWarnings("serial")
-public class ApacheCloudStackClientRequestRuntimeException extends RuntimeException {
+public class ApacheCloudStackClientRequestRuntimeException extends ApacheCloudStackClientRuntimeException {
 
     /**
      * Status of the HTTP request that generated this exception

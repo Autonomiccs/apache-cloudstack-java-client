@@ -21,6 +21,17 @@ You can find examples on how to use the framework at <a href="https://github.com
         System.out.println(response);
 ```
 
+The component is on Maven central repo; to use it, you only need to add the following piece of code to your pom.xml:
+
+```
+<dependency>
+    <groupId>br.com.autonomiccs</groupId>
+    <artifactId>apache-cloudstack-java-client</artifactId>
+    <version>1.0.0</version>
+</dependency>
+```
+
+
 # License
  Apache CloudStack Java Client
  
