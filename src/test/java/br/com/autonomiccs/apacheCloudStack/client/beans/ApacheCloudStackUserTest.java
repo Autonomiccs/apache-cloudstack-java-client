@@ -19,24 +19,32 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package br.com.autonomiccs.apacheCloudStack.exceptions;
 
-/**
- *  This class is used to throw any of the exception that may happen during runtime
- */
-@SuppressWarnings("serial")
-public class ApacheCloudStackClientRuntimeException extends RuntimeException {
+package br.com.autonomiccs.apacheCloudStack.client.beans;
 
-    public ApacheCloudStackClientRuntimeException() {
-        super();
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.mockito.runners.MockitoJUnitRunner;
+
+import br.com.autonomiccs.apacheCloudStack.exceptions.ApacheCloudStackClientRuntimeException;
+
+@RunWith(MockitoJUnitRunner.class)
+public class ApacheCloudStackUserTest {
+
+    @Test(expected = ApacheCloudStackClientRuntimeException.class)
+    public void contructorTestUsingNeitherOneOfTheConfigurations() {
+        new ApacheCloudStackUser("", "");
+        new ApacheCloudStackUser("", "", "");
     }
 
-    public ApacheCloudStackClientRuntimeException(Exception e) {
-        super(e);
+    @Test
+    public void contructorTestUsingKeys() {
+        new ApacheCloudStackUser("secretKey", "API-key");
     }
 
-    public ApacheCloudStackClientRuntimeException(String message) {
-        super(message);
+    @Test
+    public void contructorTestUsingUserCredentials() {
+        new ApacheCloudStackUser("username", "pass", "/");
     }
 
 }

@@ -21,8 +21,11 @@
  */
 package br.com.autonomiccs.apacheCloudStack.client.beans;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
+
+import br.com.autonomiccs.apacheCloudStack.exceptions.ApacheCloudStackClientRuntimeException;
 
 /**
  * This class represent an Apache CloudStack users. It holds the user data that is needed to execute the authentication process.
@@ -52,15 +55,25 @@ public class ApacheCloudStackUser {
      */
     private String apiKey;
 
+    private void validatePropertiesOnNewlyCreatedObject() {
+        boolean isAuthenticationUsingUserCredentialsConfigured = StringUtils.isNotBlank(username) && StringUtils.isNotBlank(password) && StringUtils.isNotBlank(domain);
+        boolean isAuthenticationUsingKeysConfigured = StringUtils.isNotBlank(apiKey) && StringUtils.isNotBlank(secretKey);
+        if (!isAuthenticationUsingKeysConfigured && !isAuthenticationUsingUserCredentialsConfigured) {
+            throw new ApacheCloudStackClientRuntimeException("You should either configure authentication using user credentials or user private and API keys.");
+        }
+    }
+
     public ApacheCloudStackUser(String secretKey, String apiKey) {
         this.secretKey = secretKey;
         this.apiKey = apiKey;
+        validatePropertiesOnNewlyCreatedObject();
     }
 
     public ApacheCloudStackUser(String username, String password, String domain) {
         this.username = username;
         this.password = password;
         this.domain = domain;
+        validatePropertiesOnNewlyCreatedObject();
     }
 
     public String getUsername() {
