@@ -32,8 +32,12 @@ import java.nio.charset.Charset;
 import java.security.KeyManagementException;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Collections;
+import java.util.Date;
 import java.util.List;
 import java.util.Objects;
 
@@ -91,10 +95,22 @@ public class ApacheCloudStackClient {
     private static final String APACHE_CLOUDSTACK_API_ENDPOINT = "/api";
 
     /**
-     * This flag indicates if we are going to validade the server certificate in case of HTTPS connections.
+     * This flag indicates if we are going to validate the server certificate in case of HTTPS connections.
      * The default value is 'true', meaning that we always validate the server HTTPS certificate.
      */
     protected boolean validateServerHttpsCertificate = true;
+
+    /**
+     * The validity time of the ACS request.
+     * The default value is {@value #requestValidity} .
+     */
+    private int requestValidity = 30;
+
+    /**
+     * This parameter controls if the expiration of requests is activated or not.
+     * It is activated by default. The validity of requests if defined by {@value #requestValidity} property.
+     */
+    private boolean shouldRequestsExpire = true;
 
     private Gson gson = new GsonBuilder().create();
     private Logger logger = LoggerFactory.getLogger(getClass());
@@ -418,8 +434,45 @@ public class ApacheCloudStackClient {
         if (StringUtils.isNotBlank(this.apacheCloudStackUser.getApiKey())) {
             queryCommand.add(new ApacheCloudStackApiCommandParameter("apiKey", this.apacheCloudStackUser.getApiKey()));
         }
+        configureRequestExpiration(queryCommand);
         Collections.sort(queryCommand);
         return queryCommand;
+    }
+
+    /**
+     * This method configures the request expiration if needed.
+     * It uses the value defined at {@link #requestValidity} to determine until when the request is valid.
+     * It also uses the parameter {@link #shouldRequestsExpire} to decide if it has to configure or not the validity of the request.
+     * Moreover, if the 'apacheCloudStackRequestList' contains the 'expires' it will only add a parameter called 'signatureVersion=3', in order to enable that override.
+     */
+    protected void configureRequestExpiration(List<ApacheCloudStackApiCommandParameter> apacheCloudStackRequestList) {
+        boolean isOverridingExpirationConfigs = apacheCloudStackRequestList.contains(new ApacheCloudStackApiCommandParameter("expires", StringUtils.EMPTY));
+        if (!isOverridingExpirationConfigs && !shouldRequestsExpire) {
+            return;
+        }
+        apacheCloudStackRequestList.add(new ApacheCloudStackApiCommandParameter("signatureVersion", 3));
+        if (isOverridingExpirationConfigs) {
+            return;
+        }
+        String expirationDataAsSring = createExpirationDate();
+        apacheCloudStackRequestList.add(new ApacheCloudStackApiCommandParameter("expires", expirationDataAsSring));
+    }
+
+    /**
+     *  This method creates the expiration date as a string according to the ISO 8601.
+     */
+    protected String createExpirationDate() {
+        DateFormat acsIso8601DateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ");
+        return acsIso8601DateFormat.format(getExpirationDate());
+    }
+
+    /**
+     * Creates the expiration date, by adding the {@link #requestValidity} to the current time.
+     */
+    protected Date getExpirationDate() {
+        Calendar now = Calendar.getInstance();
+        now.add(Calendar.SECOND, requestValidity);
+        return now.getTime();
     }
 
     /**
@@ -435,5 +488,13 @@ public class ApacheCloudStackClient {
 
     public void setValidateServerHttpsCertificate(boolean validateServerHttpsCertificate) {
         this.validateServerHttpsCertificate = validateServerHttpsCertificate;
+    }
+
+    public void setRequestValidity(int requestValidity) {
+        this.requestValidity = requestValidity;
+    }
+
+    public void setShouldRequestsExpire(boolean shouldRequestsExpire) {
+        this.shouldRequestsExpire = shouldRequestsExpire;
     }
 }

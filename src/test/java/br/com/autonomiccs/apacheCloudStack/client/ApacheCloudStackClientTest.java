@@ -25,7 +25,9 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.MalformedURLException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -285,6 +287,7 @@ public class ApacheCloudStackClientTest {
     }
 
     @Test
+    @SuppressWarnings("unchecked")
     public void createSortedCommandQueryListTestWithApiKey() {
         ApacheCloudStackRequest apacheCloudStackRequestMock = Mockito.mock(ApacheCloudStackRequest.class);
         Set<ApacheCloudStackApiCommandParameter> params = new HashSet<>();
@@ -292,10 +295,12 @@ public class ApacheCloudStackClientTest {
         params.add(new ApacheCloudStackApiCommandParameter("param1", "value1"));
         Mockito.doReturn(params).when(apacheCloudStackRequestMock).getParameters();
         Mockito.when(apacheCloudStackClient.apacheCloudStackUser.getApiKey()).thenReturn("apiKey");
+        Mockito.doNothing().when(apacheCloudStackClient).configureRequestExpiration(Mockito.anyList());
 
         List<ApacheCloudStackApiCommandParameter> sortedCommandQueryList = apacheCloudStackClient.createSortedCommandQueryList(apacheCloudStackRequestMock);
 
         Mockito.verify(apacheCloudStackRequestMock).getParameters();
+        Mockito.verify(apacheCloudStackClient).configureRequestExpiration(Mockito.anyList());
 
         Assert.assertEquals(3, sortedCommandQueryList.size());
         Assert.assertEquals("apiKey", sortedCommandQueryList.get(0).getName());
@@ -304,6 +309,7 @@ public class ApacheCloudStackClientTest {
     }
 
     @Test
+    @SuppressWarnings("unchecked")
     public void createSortedCommandQueryListTestWithourApiKey() {
         ApacheCloudStackRequest apacheCloudStackRequestMock = Mockito.mock(ApacheCloudStackRequest.class);
         Set<ApacheCloudStackApiCommandParameter> params = new HashSet<>();
@@ -311,10 +317,12 @@ public class ApacheCloudStackClientTest {
         params.add(new ApacheCloudStackApiCommandParameter("param1", "value1"));
         Mockito.doReturn(params).when(apacheCloudStackRequestMock).getParameters();
         Mockito.when(apacheCloudStackClient.apacheCloudStackUser.getApiKey()).thenReturn(null);
+        Mockito.doNothing().when(apacheCloudStackClient).configureRequestExpiration(Mockito.anyList());
 
         List<ApacheCloudStackApiCommandParameter> sortedCommandQueryList = apacheCloudStackClient.createSortedCommandQueryList(apacheCloudStackRequestMock);
 
         Mockito.verify(apacheCloudStackRequestMock).getParameters();
+        Mockito.verify(apacheCloudStackClient).configureRequestExpiration(Mockito.anyList());
 
         Assert.assertEquals(2, sortedCommandQueryList.size());
         Assert.assertEquals("command", sortedCommandQueryList.get(0).getName());
@@ -551,5 +559,78 @@ public class ApacheCloudStackClientTest {
         InOrder inOrder = Mockito.inOrder(apacheCloudStackClient);
         inOrder.verify(apacheCloudStackClient).createApacheCloudStackApiUrlRequest(Mockito.any(ApacheCloudStackRequest.class), Mockito.eq(false));
         inOrder.verify(apacheCloudStackClient).executeRequestGetResponseAsString(Mockito.eq(urlRequest), Mockito.any(CloseableHttpClient.class), Mockito.any(HttpContext.class));
+    }
+
+    @Test
+    public void configureRequestExpirationTestRequestsShouldNotExpire() {
+        apacheCloudStackClient.setShouldRequestsExpire(false);
+
+        ArrayList<ApacheCloudStackApiCommandParameter> arrayList = new ArrayList<>();
+        apacheCloudStackClient.configureRequestExpiration(arrayList);
+
+        Assert.assertEquals(0, arrayList.size());
+    }
+
+    @Test
+    public void configureRequestExpirationTestRequestsShouldNotExpireUsingOverride() {
+        apacheCloudStackClient.setShouldRequestsExpire(false);
+
+        ArrayList<ApacheCloudStackApiCommandParameter> arrayList = new ArrayList<>();
+        arrayList.add(new ApacheCloudStackApiCommandParameter("expires", "2011-10-10T12:00:00+0530"));
+
+        apacheCloudStackClient.configureRequestExpiration(arrayList);
+
+        Assert.assertEquals(2, arrayList.size());
+        Mockito.verify(apacheCloudStackClient, Mockito.never()).createExpirationDate();
+    }
+
+    @Test
+    public void configureRequestExpirationTestRequestsShouldExpireUsingOverride() {
+        apacheCloudStackClient.setShouldRequestsExpire(true);
+
+        ArrayList<ApacheCloudStackApiCommandParameter> arrayList = new ArrayList<>();
+        ApacheCloudStackApiCommandParameter expirationParameter = new ApacheCloudStackApiCommandParameter("expires", "2011-10-10T12:00:00+0530");
+        arrayList.add(expirationParameter);
+
+        apacheCloudStackClient.configureRequestExpiration(arrayList);
+
+        Assert.assertEquals(2, arrayList.size());
+        Assert.assertEquals(expirationParameter, arrayList.get(0));
+        Mockito.verify(apacheCloudStackClient, Mockito.never()).createExpirationDate();
+    }
+
+    @Test
+    public void configureRequestExpirationTestRequestsShouldExpireWithoutOverride() {
+        apacheCloudStackClient.setShouldRequestsExpire(true);
+
+        ArrayList<ApacheCloudStackApiCommandParameter> arrayList = new ArrayList<>();
+
+        String expirationDate = "2011-10-10T12:00:00+0530";
+        Mockito.doReturn(expirationDate).when(apacheCloudStackClient).createExpirationDate();
+
+        apacheCloudStackClient.configureRequestExpiration(arrayList);
+
+        Assert.assertEquals(2, arrayList.size());
+        Assert.assertEquals("signatureVersion", arrayList.get(0).getName());
+        Assert.assertEquals(3, arrayList.get(0).getValue());
+        Assert.assertEquals("expires", arrayList.get(1).getName());
+        Assert.assertEquals(expirationDate, arrayList.get(1).getValue());
+
+        Mockito.verify(apacheCloudStackClient).createExpirationDate();
+    }
+
+    @Test
+    public void createExpirationDateTest() {
+        Calendar someMomentInTimeSpace = Calendar.getInstance();
+        someMomentInTimeSpace.set(1999, 12, 31, 23, 59, 59);
+        someMomentInTimeSpace.set(Calendar.MILLISECOND, 0);
+        Mockito.doReturn(someMomentInTimeSpace.getTime()).when(apacheCloudStackClient).getExpirationDate();
+
+        String expirationDate = apacheCloudStackClient.createExpirationDate();
+
+        String expectedExpirationDate = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ").format(someMomentInTimeSpace.getTime());
+        Assert.assertEquals(expectedExpirationDate, expirationDate);
+
+        Mockito.verify(apacheCloudStackClient).getExpirationDate();
     }
 }
