@@ -1,5 +1,17 @@
 # Change Log
 
+## [1.0.2](https://github.com/Autonomiccs/apache-cloudstack-java-client/tree/1.0.2) (2016-11-09)
+[Full Changelog](https://github.com/Autonomiccs/apache-cloudstack-java-client/compare/1.0.1...1.0.2)
+
+**Implemented enhancements:**
+
+- Addition of support to avoid reply attack [\#20](https://github.com/Autonomiccs/apache-cloudstack-java-client/issues/20)
+
+**Merged pull requests:**
+
+- fixed version in POM [\#22](https://github.com/Autonomiccs/apache-cloudstack-java-client/pull/22) ([rafaelweingartner](https://github.com/rafaelweingartner))
+- Add support to avoid reply attacks. [\#21](https://github.com/Autonomiccs/apache-cloudstack-java-client/pull/21) ([rafaelweingartner](https://github.com/rafaelweingartner))
+
 ## [1.0.1](https://github.com/Autonomiccs/apache-cloudstack-java-client/tree/1.0.1) (2016-08-23)
 [Full Changelog](https://github.com/Autonomiccs/apache-cloudstack-java-client/compare/1.0.0...1.0.1)
 
