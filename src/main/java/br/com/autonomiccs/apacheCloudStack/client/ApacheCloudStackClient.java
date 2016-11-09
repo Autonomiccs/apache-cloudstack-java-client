@@ -138,10 +138,10 @@ public class ApacheCloudStackClient {
      * It uses the method {@link #appendUrlSuffix(String)} to execute the appending.
      */
     protected String adjustUrlIfNeeded(String url) {
-        if (!StringUtils.endsWith(url, "/client")) {
-            url = appendUrlSuffix(url);
+        if (StringUtils.endsWith(url, "/client") || StringUtils.endsWith(url, "/client/")) {
+            return url;
         }
-        return url;
+        return appendUrlSuffix(url);
     }
 
     /**
@@ -330,7 +330,7 @@ public class ApacheCloudStackClient {
      *  This method creates a list of {@link NameValuePair} and returns the data for login using username and password.
      */
     protected List<NameValuePair> getParametersForLogin() {
-        List<NameValuePair> params = new ArrayList<NameValuePair>(4);
+        List<NameValuePair> params = new ArrayList<>(4);
         params.add(new BasicNameValuePair("command", "login"));
         params.add(new BasicNameValuePair("username", this.apacheCloudStackUser.getUsername()));
         params.add(new BasicNameValuePair("password", this.apacheCloudStackUser.getPassword()));

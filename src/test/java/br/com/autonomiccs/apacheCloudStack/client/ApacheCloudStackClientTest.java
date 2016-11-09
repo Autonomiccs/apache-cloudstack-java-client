@@ -99,6 +99,30 @@ public class ApacheCloudStackClientTest {
     }
 
     @Test
+    public void adjustUrlIfNeededTestUrlEndingWithoutSlashClient() {
+        String urlWithSuffix = apacheCloudStackClient.adjustUrlIfNeeded("https://cloud.domain.com/");
+        Assert.assertEquals(cloudStackUrl, urlWithSuffix);
+    }
+
+    @Test
+    public void adjustUrlIfNeededTestUrlEndingWithoutSlashAndClient() {
+        String urlWithSuffix = apacheCloudStackClient.adjustUrlIfNeeded("https://cloud.domain.com");
+        Assert.assertEquals(cloudStackUrl, urlWithSuffix);
+    }
+
+    @Test
+    public void adjustUrlIfNeededTestUrlEndingWithSlashClientWithoutLastSlash() {
+        String urlWithSuffix = apacheCloudStackClient.adjustUrlIfNeeded("https://cloud.domain.com/client");
+        Assert.assertEquals(cloudStackUrl, urlWithSuffix);
+    }
+
+    @Test
+    public void adjustUrlIfNeededTestUrlEndingWithSlashClientWithtLastSlash() {
+        String urlWithSuffix = apacheCloudStackClient.adjustUrlIfNeeded("https://cloud.domain.com/client/");
+        Assert.assertEquals(cloudStackUrl + "/", urlWithSuffix);
+    }
+
+    @Test
     public void appendUrlSuffixTestEndingWithSlash(){
         String urlWithSuffix = apacheCloudStackClient.appendUrlSuffix("https://cloud.domain.com/");
         Assert.assertEquals(cloudStackUrl, urlWithSuffix);
