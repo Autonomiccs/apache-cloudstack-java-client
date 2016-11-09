@@ -24,7 +24,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>br.com.autonomiccs</groupId>
 	<artifactId>apache-cloudstack-java-client-examples</artifactId>
-	<version>1.0.3-SNAPSHOT</version>
+	<version>1.0.3</version>
 	
 	<url>https://github.com/Autonomiccs/apache-cloudstack-java-client</url>
 
