@@ -1,5 +1,12 @@
 # Change Log
 
+## [1.0.3](https://github.com/Autonomiccs/apache-cloudstack-java-client/tree/1.0.3) (2016-11-09)
+[Full Changelog](https://github.com/Autonomiccs/apache-cloudstack-java-client/compare/1.0.2...1.0.3)
+
+**Merged pull requests:**
+
+- Fix addition of "/client" at the end of cloudStack's URL [\#23](https://github.com/Autonomiccs/apache-cloudstack-java-client/pull/23) ([rafaelweingartner](https://github.com/rafaelweingartner))
+
 ## [1.0.2](https://github.com/Autonomiccs/apache-cloudstack-java-client/tree/1.0.2) (2016-11-09)
 [Full Changelog](https://github.com/Autonomiccs/apache-cloudstack-java-client/compare/1.0.1...1.0.2)
 
