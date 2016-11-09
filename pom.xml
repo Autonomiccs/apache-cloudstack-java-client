@@ -30,7 +30,7 @@
 
 	<groupId>br.com.autonomiccs</groupId>
 	<artifactId>apache-cloudstack-java-client</artifactId>
-	<version>1.0.2-SNAPSHOT</version>
+	<version>1.0.2</version>
 
 	<name>apache-cloudstack-java-client</name>
 	<description>This project facilitates the integration of Java applications with Apache CloudStack through its API.</description>
