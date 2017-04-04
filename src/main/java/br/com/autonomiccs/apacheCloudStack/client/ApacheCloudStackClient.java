@@ -86,15 +86,6 @@ import br.com.autonomiccs.apacheCloudStack.exceptions.ApacheCloudStackClientRunt
  */
 public class ApacheCloudStackClient {
     /**
-     * The suffix 'client' that is the endpoint to access Apache CloudStack.
-     */
-    private final static String CLOUDSTACK_BASE_ENDPOINT_URL_SUFFIX = "client";
-    /**
-     * The Apache CloudStack API endpoint
-     */
-    private static final String APACHE_CLOUDSTACK_API_ENDPOINT = "/api";
-
-    /**
      * This flag indicates if we are going to validate the server certificate in case of HTTPS connections.
      * The default value is 'true', meaning that we always validate the server HTTPS certificate.
      */
@@ -116,8 +107,8 @@ public class ApacheCloudStackClient {
     private Logger logger = LoggerFactory.getLogger(getClass());
 
     /**
-     * The URL used to access Apache CloudStack API.
-     * Ex: https://cloud.domain.com/client
+     * The API URL used to access Apache CloudStack API.
+     * Ex: https://cloud.domain.com/client/api
      */
     private String url;
 
@@ -128,31 +119,9 @@ public class ApacheCloudStackClient {
     protected ApacheCloudStackUser apacheCloudStackUser;
 
     public ApacheCloudStackClient(String url, ApacheCloudStackUser apacheCloudStackUser) {
-        this.url = adjustUrlIfNeeded(url);
+        this.url = url;
         this.apacheCloudStackUser = apacheCloudStackUser;
 
-    }
-
-    /**
-     * adds the suffix '{@value #CLOUDSTACK_BASE_ENDPOINT_URL_SUFFIX}' if it does have it.
-     * It uses the method {@link #appendUrlSuffix(String)} to execute the appending.
-     */
-    protected String adjustUrlIfNeeded(String url) {
-        if (StringUtils.endsWith(url, "/client") || StringUtils.endsWith(url, "/client/")) {
-            return url;
-        }
-        return appendUrlSuffix(url);
-    }
-
-    /**
-     * Appends the suffix '{@value #CLOUDSTACK_BASE_ENDPOINT_URL_SUFFIX}' at the end of the given URL.
-     * If it is needed, it will also add, a '/' before the suffix is appended to the URL.
-     */
-    protected String appendUrlSuffix(String url) {
-        if (StringUtils.endsWith(url, "/")) {
-            return url + CLOUDSTACK_BASE_ENDPOINT_URL_SUFFIX;
-        }
-        return url + "/" + CLOUDSTACK_BASE_ENDPOINT_URL_SUFFIX;
     }
 
     /**
@@ -321,7 +290,7 @@ public class ApacheCloudStackClient {
      *  The content type configured for this request is 'application/x-www-form-urlencoded'.
      */
     protected HttpPost createHttpPost() {
-        HttpPost httpPost = new HttpPost(url + APACHE_CLOUDSTACK_API_ENDPOINT);
+        HttpPost httpPost = new HttpPost(url);
         httpPost.addHeader("Content-Type", "application/x-www-form-urlencoded");
         return httpPost;
     }
@@ -371,15 +340,14 @@ public class ApacheCloudStackClient {
      * and then, if it needs, it creates the signature using the method {@link #createSignature(String)} and append it to the URL.
      */
     protected String createApacheCloudStackApiUrlRequest(ApacheCloudStackRequest request, boolean shouldSignAppendSignature) {
-        StringBuilder urlRequest = new StringBuilder(url + APACHE_CLOUDSTACK_API_ENDPOINT);
-        urlRequest.append("?");
+        StringBuilder urlRequest = new StringBuilder(url).append("?");
 
         String queryString = createCommandString(request);
         urlRequest.append(queryString);
 
         if (shouldSignAppendSignature) {
             String signature = createSignature(queryString);
-            urlRequest.append("&signature=" + getUrlEncodedValue(signature));
+            urlRequest.append("&signature=").append(getUrlEncodedValue(signature));
         }
         return urlRequest.toString();
     }
