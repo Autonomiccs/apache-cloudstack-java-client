@@ -21,17 +21,9 @@
  */
 package br.com.autonomiccs.apacheCloudStack.client;
 
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.net.MalformedURLException;
-import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Calendar;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-
+import br.com.autonomiccs.apacheCloudStack.client.beans.ApacheCloudStackUser;
+import br.com.autonomiccs.apacheCloudStack.exceptions.ApacheCloudStackClientRequestRuntimeException;
+import br.com.autonomiccs.apacheCloudStack.exceptions.ApacheCloudStackClientRuntimeException;
 import org.apache.http.Header;
 import org.apache.http.HeaderElement;
 import org.apache.http.HttpEntity;
@@ -61,9 +53,16 @@ import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.runners.MockitoJUnitRunner;
 
-import br.com.autonomiccs.apacheCloudStack.client.beans.ApacheCloudStackUser;
-import br.com.autonomiccs.apacheCloudStack.exceptions.ApacheCloudStackClientRequestRuntimeException;
-import br.com.autonomiccs.apacheCloudStack.exceptions.ApacheCloudStackClientRuntimeException;
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.MalformedURLException;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 @RunWith(MockitoJUnitRunner.class)
 public class ApacheCloudStackClientTest {
@@ -74,64 +73,11 @@ public class ApacheCloudStackClientTest {
     private ApacheCloudStackUser apacheCloudStackUser;
 
     private String cloudStackDomain = "cloud.domain.com";
-    private String cloudStackUrl = "https://" + cloudStackDomain + "/client";
+    private String cloudStackUrl = "https://" + cloudStackDomain + "/client/api";
 
     @Before
     public void setup() {
         apacheCloudStackClient = Mockito.spy(new ApacheCloudStackClient(cloudStackUrl, apacheCloudStackUser));
-    }
-
-    @Test
-    public void adjustUrlIfNeededTestEndingWithSuffix() {
-        executeAndVerifyAdjustUrlIfNeededTest(cloudStackUrl, 0);
-    }
-
-    @Test
-    public void adjustUrlIfNeededTestEndingWithoutSuffix() {
-        executeAndVerifyAdjustUrlIfNeededTest("https://cloud.domain.com", 1);
-    }
-
-    private void executeAndVerifyAdjustUrlIfNeededTest(String givenCloudStackUrl, int appendCallTimes) {
-        String url = apacheCloudStackClient.adjustUrlIfNeeded(givenCloudStackUrl);
-
-        Assert.assertEquals(cloudStackUrl, url);
-        Mockito.verify(apacheCloudStackClient, Mockito.times(appendCallTimes)).appendUrlSuffix(Mockito.anyString());
-    }
-
-    @Test
-    public void adjustUrlIfNeededTestUrlEndingWithoutSlashClient() {
-        String urlWithSuffix = apacheCloudStackClient.adjustUrlIfNeeded("https://cloud.domain.com/");
-        Assert.assertEquals(cloudStackUrl, urlWithSuffix);
-    }
-
-    @Test
-    public void adjustUrlIfNeededTestUrlEndingWithoutSlashAndClient() {
-        String urlWithSuffix = apacheCloudStackClient.adjustUrlIfNeeded("https://cloud.domain.com");
-        Assert.assertEquals(cloudStackUrl, urlWithSuffix);
-    }
-
-    @Test
-    public void adjustUrlIfNeededTestUrlEndingWithSlashClientWithoutLastSlash() {
-        String urlWithSuffix = apacheCloudStackClient.adjustUrlIfNeeded("https://cloud.domain.com/client");
-        Assert.assertEquals(cloudStackUrl, urlWithSuffix);
-    }
-
-    @Test
-    public void adjustUrlIfNeededTestUrlEndingWithSlashClientWithtLastSlash() {
-        String urlWithSuffix = apacheCloudStackClient.adjustUrlIfNeeded("https://cloud.domain.com/client/");
-        Assert.assertEquals(cloudStackUrl + "/", urlWithSuffix);
-    }
-
-    @Test
-    public void appendUrlSuffixTestEndingWithSlash(){
-        String urlWithSuffix = apacheCloudStackClient.appendUrlSuffix("https://cloud.domain.com/");
-        Assert.assertEquals(cloudStackUrl, urlWithSuffix);
-    }
-
-    @Test
-    public void appendUrlSuffixTestEndingWithoutSlash() {
-        String urlWithSuffix = apacheCloudStackClient.appendUrlSuffix("https://cloud.domain.com");
-        Assert.assertEquals(cloudStackUrl, urlWithSuffix);
     }
 
     @Test
@@ -233,7 +179,7 @@ public class ApacheCloudStackClientTest {
         Mockito.doReturn(signatureValue).when(apacheCloudStackClient).createSignature(Mockito.eq(queryString));
 
         String urlRequestReturned = apacheCloudStackClient.createApacheCloudStackApiUrlRequest(apacheCloudStackRequestMock, true);
-        Assert.assertEquals(cloudStackUrl + "/api?" + queryString + "&signature=" + signatureValue, urlRequestReturned);
+        Assert.assertEquals(cloudStackUrl + "?" + queryString + "&signature=" + signatureValue, urlRequestReturned);
 
         InOrder inOrder = Mockito.inOrder(apacheCloudStackClient);
         inOrder.verify(apacheCloudStackClient).createCommandString(Mockito.eq(apacheCloudStackRequestMock));
@@ -249,7 +195,7 @@ public class ApacheCloudStackClientTest {
         Mockito.doReturn(queryString).when(apacheCloudStackClient).createCommandString(Mockito.eq(apacheCloudStackRequestMock));
 
         String urlRequestReturned = apacheCloudStackClient.createApacheCloudStackApiUrlRequest(apacheCloudStackRequestMock, false);
-        Assert.assertEquals(cloudStackUrl + "/api?" + queryString, urlRequestReturned);
+        Assert.assertEquals(cloudStackUrl + "?" + queryString, urlRequestReturned);
 
         InOrder inOrder = Mockito.inOrder(apacheCloudStackClient);
         inOrder.verify(apacheCloudStackClient).createCommandString(Mockito.eq(apacheCloudStackRequestMock));
@@ -544,7 +490,7 @@ public class ApacheCloudStackClientTest {
     public void createHttpPostTest() throws MalformedURLException {
         HttpPost httpPost = apacheCloudStackClient.createHttpPost();
 
-        Assert.assertEquals(cloudStackUrl + "/api", httpPost.getURI().toURL().toString());
+        Assert.assertEquals(cloudStackUrl, httpPost.getURI().toURL().toString());
         Assert.assertEquals("application/x-www-form-urlencoded", httpPost.getFirstHeader("Content-Type").getValue());
     }
 
