@@ -24,6 +24,7 @@ package br.com.autonomiccs.apacheCloudStack.client;
 import br.com.autonomiccs.apacheCloudStack.client.beans.ApacheCloudStackUser;
 import br.com.autonomiccs.apacheCloudStack.exceptions.ApacheCloudStackClientRequestRuntimeException;
 import br.com.autonomiccs.apacheCloudStack.exceptions.ApacheCloudStackClientRuntimeException;
+import org.apache.commons.lang3.time.DateUtils;
 import org.apache.http.Header;
 import org.apache.http.HeaderElement;
 import org.apache.http.HttpEntity;
@@ -31,6 +32,7 @@ import org.apache.http.NameValuePair;
 import org.apache.http.StatusLine;
 import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.CookieStore;
+import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.entity.UrlEncodedFormEntity;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
@@ -133,6 +135,26 @@ public class ApacheCloudStackClientTest {
         Mockito.verify(httpClientMock).close();
     }
 
+    private void testRequestConfig(final RequestConfig config, final int timeout) {
+        Assert.assertEquals(config.getConnectTimeout(), timeout * (int) DateUtils.MILLIS_PER_SECOND);
+        Assert.assertEquals(config.getConnectionRequestTimeout(), timeout * (int) DateUtils.MILLIS_PER_SECOND);
+        Assert.assertEquals(config.getSocketTimeout(), timeout * (int) DateUtils.MILLIS_PER_SECOND);
+    }
+
+    @Test
+    public void createRequestConfigDefaultTest() {
+        RequestConfig config = apacheCloudStackClient.createRequestConfig();
+        testRequestConfig(config, 60);
+    }
+
+    @Test
+    public void createRequestConfigCustomValueTest() {
+        int timeout = 30;
+        apacheCloudStackClient.setConnectionTimeout(timeout);
+        RequestConfig config = apacheCloudStackClient.createRequestConfig();
+        testRequestConfig(config, timeout);
+    }
+
     @Test
     public void createHttpClientTestValidateServerHttpsCertificateTrue() {
         configureExecuteAndVerifyTestForCreateHttpClient(true, 0);
@@ -148,6 +170,7 @@ public class ApacheCloudStackClientTest {
         CloseableHttpClient httpClient = apacheCloudStackClient.createHttpClient();
 
         Assert.assertNotNull(httpClient);
+        Mockito.verify(apacheCloudStackClient, Mockito.times(1)).createRequestConfig();
         Mockito.verify(apacheCloudStackClient, Mockito.times(numberOfCreateUnsecureSslFactoryCalls)).createInsecureSslFactory();
     }
 
