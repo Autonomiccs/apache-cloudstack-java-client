@@ -45,6 +45,7 @@ import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.codec.digest.HmacUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.time.DateUtils;
 import org.apache.http.Header;
 import org.apache.http.HeaderElement;
 import org.apache.http.HttpHost;
@@ -52,6 +53,7 @@ import org.apache.http.HttpStatus;
 import org.apache.http.NameValuePair;
 import org.apache.http.StatusLine;
 import org.apache.http.client.CookieStore;
+import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.entity.UrlEncodedFormEntity;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
@@ -96,6 +98,12 @@ public class ApacheCloudStackClient {
      * The default value is {@value #requestValidity} .
      */
     private int requestValidity = 30;
+
+    /**
+     * The http client connection timeout
+     * The default value is {@value #connectionTimeout} seconds .
+     */
+    private int connectionTimeout = 60;
 
     /**
      * This parameter controls if the expiration of requests is activated or not.
@@ -185,11 +193,23 @@ public class ApacheCloudStackClient {
     }
 
     /**
+     * It creates a {@link RequestConfig} object with configured {@link #connectionTimeout} value.
+     * This can be used to set on a HttpClient its connect timeout, connection request timeout and socket timeout.
+     * @return returns the created RequestConfig object
+     */
+    protected RequestConfig createRequestConfig() {
+        return RequestConfig.custom()
+                .setConnectTimeout(connectionTimeout * (int) DateUtils.MILLIS_PER_SECOND)
+                .setConnectionRequestTimeout(connectionTimeout * (int) DateUtils.MILLIS_PER_SECOND)
+                .setSocketTimeout(connectionTimeout * (int) DateUtils.MILLIS_PER_SECOND).build();
+    }
+
+    /**
      *  It creates an {@link CloseableHttpClient} object.
      *  If {@link #validateServerHttpsCertificate} indicates that we should not validate HTTPS server certificate, we use an insecure SSL factory; the insecure factory is created using {@link #createInsecureSslFactory()}.
      */
     protected CloseableHttpClient createHttpClient() {
-        HttpClientBuilder httpClientBuilder = HttpClientBuilder.create();
+        HttpClientBuilder httpClientBuilder = HttpClientBuilder.create().setDefaultRequestConfig(createRequestConfig());
         if (!validateServerHttpsCertificate) {
             SSLConnectionSocketFactory sslsf = createInsecureSslFactory();
             httpClientBuilder.setSSLSocketFactory(sslsf);
@@ -464,5 +484,9 @@ public class ApacheCloudStackClient {
 
     public void setShouldRequestsExpire(boolean shouldRequestsExpire) {
         this.shouldRequestsExpire = shouldRequestsExpire;
+    }
+
+    public void setConnectionTimeout(int connectionTimeout) {
+        this.connectionTimeout = connectionTimeout;
     }
 }
