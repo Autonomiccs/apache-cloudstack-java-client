@@ -1,5 +1,19 @@
 # Change Log
 
+## [1.0.4](https://github.com/Autonomiccs/apache-cloudstack-java-client/tree/1.0.4) (2017-04-06)
+[Full Changelog](https://github.com/Autonomiccs/apache-cloudstack-java-client/compare/1.0.3...1.0.4)
+
+**Closed issues:**
+
+- Allows connection timeout to be specified [\#28](https://github.com/Autonomiccs/apache-cloudstack-java-client/issues/28)
+- Enable client URLs without any assumed suffixes \(e.g. /client or /client/api\) [\#26](https://github.com/Autonomiccs/apache-cloudstack-java-client/issues/26)
+
+**Merged pull requests:**
+
+- ApacheCloudStackClient: Allows connection timeout to be specified [\#27](https://github.com/Autonomiccs/apache-cloudstack-java-client/pull/27) ([rhtyd](https://github.com/rhtyd))
+- ApacheCloudStackClient: Remove assumed client API url suffixes [\#25](https://github.com/Autonomiccs/apache-cloudstack-java-client/pull/25) ([rhtyd](https://github.com/rhtyd))
+- fiz version 1.0.4-snapshot [\#24](https://github.com/Autonomiccs/apache-cloudstack-java-client/pull/24) ([rafaelweingartner](https://github.com/rafaelweingartner))
+
 ## [1.0.3](https://github.com/Autonomiccs/apache-cloudstack-java-client/tree/1.0.3) (2016-11-09)
 [Full Changelog](https://github.com/Autonomiccs/apache-cloudstack-java-client/compare/1.0.2...1.0.3)
 
