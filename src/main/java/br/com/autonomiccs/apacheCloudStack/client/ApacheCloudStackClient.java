@@ -140,7 +140,7 @@ public class ApacheCloudStackClient {
     public String executeRequest(ApacheCloudStackRequest request) {
         boolean isSecretKeyApiKeyAuthenticationMechanism = StringUtils.isNotBlank(this.apacheCloudStackUser.getApiKey());
         String urlRequest = createApacheCloudStackApiUrlRequest(request, isSecretKeyApiKeyAuthenticationMechanism);
-        logger.debug("Executing request[%s].", urlRequest);
+        logger.debug(String.format("Executing request[%s].", urlRequest));
         CloseableHttpClient httpClient = createHttpClient();
         HttpContext httpContext = createHttpContextWithAuthenticatedSessionUsingUserCredentialsIfNeeded(httpClient, isSecretKeyApiKeyAuthenticationMechanism);
         try {
@@ -178,7 +178,7 @@ public class ApacheCloudStackClient {
     protected void executeUserLogout(CloseableHttpClient httpClient, HttpContext httpContext) {
         String urlRequest = createApacheCloudStackApiUrlRequest(new ApacheCloudStackRequest("logout").addParameter("response", "json"), false);
         String returnOfLogout = executeRequestGetResponseAsString(urlRequest, httpClient, httpContext);
-        logger.debug("Logout result[%s]", returnOfLogout);
+        logger.debug(String.format("Logout result[%s]", returnOfLogout));
     }
 
     /**
@@ -198,10 +198,8 @@ public class ApacheCloudStackClient {
      * @return returns the created RequestConfig object
      */
     protected RequestConfig createRequestConfig() {
-        return RequestConfig.custom()
-                .setConnectTimeout(connectionTimeout * (int) DateUtils.MILLIS_PER_SECOND)
-                .setConnectionRequestTimeout(connectionTimeout * (int) DateUtils.MILLIS_PER_SECOND)
-                .setSocketTimeout(connectionTimeout * (int) DateUtils.MILLIS_PER_SECOND).build();
+        return RequestConfig.custom().setConnectTimeout(connectionTimeout * (int)DateUtils.MILLIS_PER_SECOND)
+                .setConnectionRequestTimeout(connectionTimeout * (int)DateUtils.MILLIS_PER_SECOND).setSocketTimeout(connectionTimeout * (int)DateUtils.MILLIS_PER_SECOND).build();
     }
 
     /**
@@ -234,7 +232,7 @@ public class ApacheCloudStackClient {
             if (statusCode != HttpStatus.SC_OK) {
                 throw new ApacheCloudStackClientRequestRuntimeException(statusCode, getResponseAsString(loginResponse), "login");
             }
-            logger.debug("Authentication response:[%s]", getResponseAsString(loginResponse));
+            logger.debug(String.format("Authentication response:[%s]", getResponseAsString(loginResponse)));
 
             return createHttpContextWithCookies(loginResponse);
         } catch (IOException e) {
