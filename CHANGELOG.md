@@ -1,5 +1,16 @@
 # Change Log
 
+## [1.0.5](https://github.com/Autonomiccs/apache-cloudstack-java-client/tree/1.0.5) (2017-04-13)
+[Full Changelog](https://github.com/Autonomiccs/apache-cloudstack-java-client/compare/1.0.4...1.0.5)
+
+**Closed issues:**
+
+- Incomplete log at ApacheCloudStackClient class [\#30](https://github.com/Autonomiccs/apache-cloudstack-java-client/issues/30)
+
+**Merged pull requests:**
+
+- Fix some call for logger.debug that were using regex  [\#29](https://github.com/Autonomiccs/apache-cloudstack-java-client/pull/29) ([rafaelweingartner](https://github.com/rafaelweingartner))
+
 ## [1.0.4](https://github.com/Autonomiccs/apache-cloudstack-java-client/tree/1.0.4) (2017-04-06)
 [Full Changelog](https://github.com/Autonomiccs/apache-cloudstack-java-client/compare/1.0.3...1.0.4)
 
@@ -12,7 +23,7 @@
 
 - ApacheCloudStackClient: Allows connection timeout to be specified [\#27](https://github.com/Autonomiccs/apache-cloudstack-java-client/pull/27) ([rhtyd](https://github.com/rhtyd))
 - ApacheCloudStackClient: Remove assumed client API url suffixes [\#25](https://github.com/Autonomiccs/apache-cloudstack-java-client/pull/25) ([rhtyd](https://github.com/rhtyd))
-- fiz version 1.0.4-snapshot [\#24](https://github.com/Autonomiccs/apache-cloudstack-java-client/pull/24) ([rafaelweingartner](https://github.com/rafaelweingartner))
+- fix version 1.0.4-snapshot [\#24](https://github.com/Autonomiccs/apache-cloudstack-java-client/pull/24) ([rafaelweingartner](https://github.com/rafaelweingartner))
 
 ## [1.0.3](https://github.com/Autonomiccs/apache-cloudstack-java-client/tree/1.0.3) (2016-11-09)
 [Full Changelog](https://github.com/Autonomiccs/apache-cloudstack-java-client/compare/1.0.2...1.0.3)
