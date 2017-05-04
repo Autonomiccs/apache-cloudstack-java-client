@@ -8,7 +8,7 @@ You can find examples on how to use the framework at <a href="https://github.com
 
         String secretKey = "<secretKey>";
         String apiKey = "<apiKey>";
-        String cloudStackUrl = "https://cloud.domain.com/client";
+        String cloudStackUrl = "https://cloud.domain.com/client/api";
 
         ApacheCloudStackUser apacheCloudStackUser = new ApacheCloudStackUser(secretKey, apiKey);
         ApacheCloudStackClient apacheCloudStackClient = new ApacheCloudStackClient(cloudStackUrl, apacheCloudStackUser);
