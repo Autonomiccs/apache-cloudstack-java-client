@@ -1,5 +1,12 @@
 # Change Log
 
+## [1.0.6](https://github.com/Autonomiccs/apache-cloudstack-java-client/tree/1.0.6) (2017-09-30)
+[Full Changelog](https://github.com/Autonomiccs/apache-cloudstack-java-client/compare/1.0.5...1.0.6)
+
+**Merged pull requests:**
+
+- Add 'acceptAllKindsOfCertificates' parameter for dev/testing purposes [\#31](https://github.com/Autonomiccs/apache-cloudstack-java-client/pull/31) ([rafaelweingartner](https://github.com/rafaelweingartner))
+
 ## [1.0.5](https://github.com/Autonomiccs/apache-cloudstack-java-client/tree/1.0.5) (2017-04-13)
 [Full Changelog](https://github.com/Autonomiccs/apache-cloudstack-java-client/compare/1.0.4...1.0.5)
 
