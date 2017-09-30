@@ -21,9 +21,19 @@
  */
 package br.com.autonomiccs.apacheCloudStack.client;
 
-import br.com.autonomiccs.apacheCloudStack.client.beans.ApacheCloudStackUser;
-import br.com.autonomiccs.apacheCloudStack.exceptions.ApacheCloudStackClientRequestRuntimeException;
-import br.com.autonomiccs.apacheCloudStack.exceptions.ApacheCloudStackClientRuntimeException;
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.MalformedURLException;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
+import javax.net.ssl.HostnameVerifier;
+
 import org.apache.commons.lang3.time.DateUtils;
 import org.apache.http.Header;
 import org.apache.http.HeaderElement;
@@ -55,16 +65,9 @@ import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.runners.MockitoJUnitRunner;
 
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.net.MalformedURLException;
-import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Calendar;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import br.com.autonomiccs.apacheCloudStack.client.beans.ApacheCloudStackUser;
+import br.com.autonomiccs.apacheCloudStack.exceptions.ApacheCloudStackClientRequestRuntimeException;
+import br.com.autonomiccs.apacheCloudStack.exceptions.ApacheCloudStackClientRuntimeException;
 
 @RunWith(MockitoJUnitRunner.class)
 public class ApacheCloudStackClientTest {
@@ -156,21 +159,35 @@ public class ApacheCloudStackClientTest {
     }
 
     @Test
-    public void createHttpClientTestValidateServerHttpsCertificateTrue() {
-        configureExecuteAndVerifyTestForCreateHttpClient(true, 0);
+    public void createHttpClientTestValidateServerHttpsCertificateTrueAndTotalInsecureFalse() {
+        configureExecuteAndVerifyTestForCreateHttpClient(true, 0, false, 0);
     }
 
     @Test
-    public void createHttpClientTestValidateServerHttpsCertificateFalse() {
-        configureExecuteAndVerifyTestForCreateHttpClient(false, 1);
+    public void createHttpClientTestValidateServerHttpsCertificateTrueAndTotalInsecureTrue() {
+        configureExecuteAndVerifyTestForCreateHttpClient(true, 0, true, 0);
     }
 
-    private void configureExecuteAndVerifyTestForCreateHttpClient(boolean shouldVerifyServerCertificates, int numberOfCreateUnsecureSslFactoryCalls) {
+    @Test
+    public void createHttpClientTestValidateServerHttpsCertificateFalseAndTotalInsecureFalse() {
+        configureExecuteAndVerifyTestForCreateHttpClient(false, 1, false, 0);
+    }
+
+    @Test
+    public void createHttpClientTestValidateServerHttpsCertificateFalseAndTotalInsecureTrue() {
+        configureExecuteAndVerifyTestForCreateHttpClient(false, 1, true, 1);
+    }
+
+    private void configureExecuteAndVerifyTestForCreateHttpClient(boolean shouldVerifyServerCertificates, int numberOfCreateUnsecureSslFactoryCalls, boolean totalInsecure,
+            int expectedCallForInsecureHostNameCheck) {
         apacheCloudStackClient.validateServerHttpsCertificate = shouldVerifyServerCertificates;
+        apacheCloudStackClient.acceptAllKindsOfCertificates = totalInsecure;
+
         CloseableHttpClient httpClient = apacheCloudStackClient.createHttpClient();
 
         Assert.assertNotNull(httpClient);
         Mockito.verify(apacheCloudStackClient, Mockito.times(1)).createRequestConfig();
+        Mockito.verify(apacheCloudStackClient, Mockito.times(expectedCallForInsecureHostNameCheck)).createInsecureHostNameVerifier();
         Mockito.verify(apacheCloudStackClient, Mockito.times(numberOfCreateUnsecureSslFactoryCalls)).createInsecureSslFactory();
     }
 
@@ -625,5 +642,14 @@ public class ApacheCloudStackClientTest {
         Assert.assertEquals(expectedExpirationDate, expirationDate);
 
         Mockito.verify(apacheCloudStackClient).getExpirationDate();
+    }
+
+    @Test
+    public void createInsecureHostNameVerifierTest() {
+        HostnameVerifier hostNameVerifier = apacheCloudStackClient.createInsecureHostNameVerifier();
+
+        Assert.assertTrue(hostNameVerifier.verify("...", null));
+        Assert.assertTrue(hostNameVerifier.verify("Any other thing", null));
+
     }
 }
