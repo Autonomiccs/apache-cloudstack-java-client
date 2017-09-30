@@ -36,9 +36,7 @@ public class UsernameAndPasswordAuthentication {
         ApacheCloudStackClient apacheCloudStackClient = new ApacheCloudStackClient(cloudStackUrl, apacheCloudStackUser);
         apacheCloudStackClient.setValidateServerHttpsCertificate(false);
 
-        ApacheCloudStackRequest apacheCloudStackRequest = new ApacheCloudStackRequest("listUsers");
-        apacheCloudStackRequest.addParameter("response", "json");
-        apacheCloudStackRequest.addParameter("listall", true);
+        ApacheCloudStackRequest apacheCloudStackRequest = new ApacheCloudStackRequest("listHosts");
         String response = apacheCloudStackClient.executeRequest(apacheCloudStackRequest);
         System.out.println(response);
     }

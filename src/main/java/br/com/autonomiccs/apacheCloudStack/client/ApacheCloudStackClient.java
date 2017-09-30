@@ -32,6 +32,7 @@ import java.nio.charset.Charset;
 import java.security.KeyManagementException;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
+import java.security.cert.X509Certificate;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -40,6 +41,11 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Objects;
+
+import javax.net.ssl.HostnameVerifier;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLSession;
+import javax.net.ssl.TrustManager;
 
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.codec.digest.HmacUtils;
@@ -92,6 +98,13 @@ public class ApacheCloudStackClient {
      * The default value is 'true', meaning that we always validate the server HTTPS certificate.
      */
     protected boolean validateServerHttpsCertificate = true;
+
+    /**
+     * This flag is highly dangerous and should never be used with production environments.
+     * It will accept every single SSL certificates when creating HTTPS connections. Not even the commons name will be checked.
+     * Therefore, it should be kept only during development phase.
+     */
+    protected boolean acceptAllKindsOfCertificates = false;
 
     /**
      * The validity time of the ACS request.
@@ -330,12 +343,62 @@ public class ApacheCloudStackClient {
      * For that we use {@link TrustSelfSignedStrategy}.
      */
     protected SSLConnectionSocketFactory createInsecureSslFactory() {
-        SSLContextBuilder builder = new SSLContextBuilder();
         try {
+            SSLContextBuilder builder = new SSLContextBuilder();
             builder.loadTrustMaterial(new TrustSelfSignedStrategy());
-            return new SSLConnectionSocketFactory(builder.build());
+            SSLContext sc = builder.build();
+
+            if (acceptAllKindsOfCertificates) {
+                TrustManager[] trustAllCerts = new TrustManager[1];
+                TrustManager tm = new TrustAllManager();
+                trustAllCerts[0] = tm;
+                sc.init(null, trustAllCerts, null);
+
+                HostnameVerifier hostnameVerifier = createInsecureHostNameVerifier();
+                return new SSLConnectionSocketFactory(sc, hostnameVerifier);
+            }
+            return new SSLConnectionSocketFactory(sc);
         } catch (NoSuchAlgorithmException | KeyStoreException | KeyManagementException e) {
             throw new ApacheCloudStackClientRuntimeException(e);
+        }
+    }
+
+    protected HostnameVerifier createInsecureHostNameVerifier() {
+        HostnameVerifier hostnameVerifier = new HostnameVerifier() {
+            @Override
+            public boolean verify(String hostname, SSLSession session) {
+                return true;
+            }
+        };
+        return hostnameVerifier;
+    }
+
+    /**
+     * This class is used when {@link ApacheCloudStackClient#acceptAllKindsOfCertificates} is set to true.
+     */
+    @SuppressWarnings("unused")
+    private class TrustAllManager implements javax.net.ssl.TrustManager, javax.net.ssl.X509TrustManager {
+        @Override
+        public java.security.cert.X509Certificate[] getAcceptedIssuers() {
+            return null;
+        }
+
+        public boolean isServerTrusted(final X509Certificate[] certs) {
+            return true;
+        }
+
+        public boolean isClientTrusted(final X509Certificate[] certs) {
+            return true;
+        }
+
+        @Override
+        public void checkServerTrusted(java.security.cert.X509Certificate[] certs, String authType) throws java.security.cert.CertificateException {
+            return;
+        }
+
+        @Override
+        public void checkClientTrusted(java.security.cert.X509Certificate[] certs, String authType) throws java.security.cert.CertificateException {
+            return;
         }
     }
 
@@ -472,6 +535,10 @@ public class ApacheCloudStackClient {
         return gson.fromJson(response, clazz);
     }
 
+    /**
+     * This configuration enables or disables the HTTPS certification validation. If set to 'false', we will accept self-signed certificates.
+     * However, this does not mean that we accept certificates that are signed by an untrusted certificated authority.
+     */
     public void setValidateServerHttpsCertificate(boolean validateServerHttpsCertificate) {
         this.validateServerHttpsCertificate = validateServerHttpsCertificate;
     }
@@ -486,5 +553,9 @@ public class ApacheCloudStackClient {
 
     public void setConnectionTimeout(int connectionTimeout) {
         this.connectionTimeout = connectionTimeout;
+    }
+
+    public void setAcceptAllKindsOfCertificates(boolean acceptAllKindOfCertificates) {
+        this.acceptAllKindsOfCertificates = acceptAllKindOfCertificates;
     }
 }
