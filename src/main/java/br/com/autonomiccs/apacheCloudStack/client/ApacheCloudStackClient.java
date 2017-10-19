@@ -559,6 +559,10 @@ public class ApacheCloudStackClient {
         this.acceptAllKindsOfCertificates = acceptAllKindOfCertificates;
     }
 
+    public String getUrl() {
+        return url;
+    }
+
     @Override
     public String toString() {
         return String.format(
