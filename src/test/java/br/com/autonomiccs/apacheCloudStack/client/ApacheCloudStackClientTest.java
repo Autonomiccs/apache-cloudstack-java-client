@@ -3,19 +3,19 @@
  * Copyright (C) 2016 Autonomiccs, Inc.
  *
  * Licensed to the Autonomiccs, Inc. under one
- * or more contributor license agreements.  See the NOTICE file
+ * or more contributor license agreements. See the NOTICE file
  * distributed with this work for additional information
  * regarding copyright ownership. The Autonomiccs, Inc. licenses this file
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
+ * with the License. You may obtain a copy of the License at
  *
- *    http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
+ * KIND, either express or implied. See the License for the
  * specific language governing permissions and limitations
  * under the License.
  */
@@ -139,9 +139,9 @@ public class ApacheCloudStackClientTest {
     }
 
     private void testRequestConfig(final RequestConfig config, final int timeout) {
-        Assert.assertEquals(config.getConnectTimeout(), timeout * (int) DateUtils.MILLIS_PER_SECOND);
-        Assert.assertEquals(config.getConnectionRequestTimeout(), timeout * (int) DateUtils.MILLIS_PER_SECOND);
-        Assert.assertEquals(config.getSocketTimeout(), timeout * (int) DateUtils.MILLIS_PER_SECOND);
+        Assert.assertEquals(config.getConnectTimeout(), timeout * (int)DateUtils.MILLIS_PER_SECOND);
+        Assert.assertEquals(config.getConnectionRequestTimeout(), timeout * (int)DateUtils.MILLIS_PER_SECOND);
+        Assert.assertEquals(config.getSocketTimeout(), timeout * (int)DateUtils.MILLIS_PER_SECOND);
     }
 
     @Test
@@ -376,7 +376,8 @@ public class ApacheCloudStackClientTest {
     public void createHttpContextWithAuthenticatedSessionUsingUserCredentialsIfNeededTestAuthenticationWithUsernameAndPassword() {
         CloseableHttpClient closeableHttpClientMock = Mockito.mock(CloseableHttpClient.class);
         HttpContext httpContextMock = Mockito.mock(HttpContext.class);
-        Mockito.doReturn(httpContextMock).when(apacheCloudStackClient).createHttpContextWithAuthenticatedSessionUsingUserCredentials(Mockito.any(closeableHttpClientMock.getClass()));
+        Mockito.doReturn(httpContextMock).when(apacheCloudStackClient)
+        .createHttpContextWithAuthenticatedSessionUsingUserCredentials(Mockito.any(closeableHttpClientMock.getClass()));
         HttpContext basicHttpContext = apacheCloudStackClient.createHttpContextWithAuthenticatedSessionUsingUserCredentialsIfNeeded(closeableHttpClientMock, false);
 
         Mockito.verify(apacheCloudStackClient, Mockito.times(1)).createHttpContextWithAuthenticatedSessionUsingUserCredentials(Mockito.eq(closeableHttpClientMock));
@@ -562,7 +563,8 @@ public class ApacheCloudStackClientTest {
         String urlRequest = "urlRequest";
 
         Mockito.doReturn(urlRequest).when(apacheCloudStackClient).createApacheCloudStackApiUrlRequest(Mockito.any(ApacheCloudStackRequest.class), Mockito.eq(false));
-        Mockito.doReturn("response").when(apacheCloudStackClient).executeRequestGetResponseAsString(Mockito.eq(urlRequest), Mockito.any(CloseableHttpClient.class), Mockito.any(HttpContext.class));
+        Mockito.doReturn("response").when(apacheCloudStackClient).executeRequestGetResponseAsString(Mockito.eq(urlRequest), Mockito.any(CloseableHttpClient.class),
+                Mockito.any(HttpContext.class));
 
         apacheCloudStackClient.executeUserLogout(Mockito.mock(CloseableHttpClient.class), Mockito.mock(HttpContext.class));
 
@@ -651,5 +653,13 @@ public class ApacheCloudStackClientTest {
         Assert.assertTrue(hostNameVerifier.verify("...", null));
         Assert.assertTrue(hostNameVerifier.verify("Any other thing", null));
 
+    }
+
+    @Test
+    public void toStringTest() {
+        String toStringValue = apacheCloudStackClient.toString();
+
+        String expectedToStringValue = "Apache CloudSTackClient for site[https://cloud.domain.com/client/api], parameters: [connectionTimeout=60, acceptAllKindsOfCertificates=false, validateServerHttpsCertificate=true, requestValidity=30, shouldRequestsExpire=true]";
+        Assert.assertEquals(expectedToStringValue, toStringValue);
     }
 }

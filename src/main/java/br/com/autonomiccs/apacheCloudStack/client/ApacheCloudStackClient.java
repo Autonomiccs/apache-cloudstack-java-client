@@ -558,4 +558,11 @@ public class ApacheCloudStackClient {
     public void setAcceptAllKindsOfCertificates(boolean acceptAllKindOfCertificates) {
         this.acceptAllKindsOfCertificates = acceptAllKindOfCertificates;
     }
+
+    @Override
+    public String toString() {
+        return String.format(
+                "Apache CloudSTackClient for site[%s], parameters: [connectionTimeout=%s, acceptAllKindsOfCertificates=%s, validateServerHttpsCertificate=%s, requestValidity=%d, shouldRequestsExpire=%s]",
+                this.url, this.connectionTimeout, this.acceptAllKindsOfCertificates, this.validateServerHttpsCertificate, this.requestValidity, this.shouldRequestsExpire);
+    }
 }
