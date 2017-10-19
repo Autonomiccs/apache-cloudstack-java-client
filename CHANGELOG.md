@@ -1,5 +1,12 @@
 # Change Log
 
+## [1.0.7](https://github.com/Autonomiccs/apache-cloudstack-java-client/tree/1.0.7) (2017-10-19)
+[Full Changelog](https://github.com/Autonomiccs/apache-cloudstack-java-client/compare/1.0.6...1.0.7)
+
+**Merged pull requests:**
+
+- Addition of to string apache cloud stack client [\#32](https://github.com/Autonomiccs/apache-cloudstack-java-client/pull/32) ([rafaelweingartner](https://github.com/rafaelweingartner))
+
 ## [1.0.6](https://github.com/Autonomiccs/apache-cloudstack-java-client/tree/1.0.6) (2017-09-30)
 [Full Changelog](https://github.com/Autonomiccs/apache-cloudstack-java-client/compare/1.0.5...1.0.6)
 
