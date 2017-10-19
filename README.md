@@ -27,7 +27,7 @@ The component is on Maven central repo; to use it, you only need to add the foll
 <dependency>
     <groupId>br.com.autonomiccs</groupId>
     <artifactId>apache-cloudstack-java-client</artifactId>
-    <version>1.0.4</version>
+    <version>1.0.8</version>
 </dependency>
 ```
 
