@@ -23,6 +23,7 @@ package br.com.autonomiccs.apacheCloudStack.client;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.Serializable;
 import java.io.StringWriter;
 import java.io.UnsupportedEncodingException;
 import java.net.URI;
@@ -92,7 +93,15 @@ import br.com.autonomiccs.apacheCloudStack.exceptions.ApacheCloudStackClientRunt
  * Apache CloudStack API client.
  * The client is a pair of URL and user credentials ({@link #apacheCloudStackUser}).
  */
-public class ApacheCloudStackClient {
+public class ApacheCloudStackClient implements Serializable {
+    /**
+     * The serial version ID of the current {@link ApacheCloudStackClient}
+     */
+    private static final long serialVersionUID = 1L;
+
+    private static Logger LOGGER = LoggerFactory.getLogger(ApacheCloudStackClient.class);
+    private static Gson GSON = new GsonBuilder().create();
+
     /**
      * This flag indicates if we are going to validate the server certificate in case of HTTPS connections.
      * The default value is 'true', meaning that we always validate the server HTTPS certificate.
@@ -124,9 +133,6 @@ public class ApacheCloudStackClient {
      */
     private boolean shouldRequestsExpire = true;
 
-    private Gson gson = new GsonBuilder().create();
-    private Logger logger = LoggerFactory.getLogger(getClass());
-
     /**
      * The API URL used to access Apache CloudStack API.
      * Ex: https://cloud.domain.com/client/api
@@ -153,7 +159,7 @@ public class ApacheCloudStackClient {
     public String executeRequest(ApacheCloudStackRequest request) {
         boolean isSecretKeyApiKeyAuthenticationMechanism = StringUtils.isNotBlank(this.apacheCloudStackUser.getApiKey());
         String urlRequest = createApacheCloudStackApiUrlRequest(request, isSecretKeyApiKeyAuthenticationMechanism);
-        logger.debug(String.format("Executing request[%s].", urlRequest));
+        LOGGER.debug(String.format("Executing request[%s].", urlRequest));
         CloseableHttpClient httpClient = createHttpClient();
         HttpContext httpContext = createHttpContextWithAuthenticatedSessionUsingUserCredentialsIfNeeded(httpClient, isSecretKeyApiKeyAuthenticationMechanism);
         try {
@@ -179,7 +185,7 @@ public class ApacheCloudStackClient {
             }
             throw new ApacheCloudStackClientRequestRuntimeException(requestStatus.getStatusCode(), getResponseAsString(response), urlRequest.toString());
         } catch (IOException e) {
-            logger.error(String.format("Error while executing request [%s]", urlRequest));
+            LOGGER.error(String.format("Error while executing request [%s]", urlRequest));
             throw new ApacheCloudStackClientRuntimeException(e);
         }
     }
@@ -191,7 +197,7 @@ public class ApacheCloudStackClient {
     protected void executeUserLogout(CloseableHttpClient httpClient, HttpContext httpContext) {
         String urlRequest = createApacheCloudStackApiUrlRequest(new ApacheCloudStackRequest("logout").addParameter("response", "json"), false);
         String returnOfLogout = executeRequestGetResponseAsString(urlRequest, httpClient, httpContext);
-        logger.debug(String.format("Logout result[%s]", returnOfLogout));
+        LOGGER.debug(String.format("Logout result[%s]", returnOfLogout));
     }
 
     /**
@@ -245,7 +251,7 @@ public class ApacheCloudStackClient {
             if (statusCode != HttpStatus.SC_OK) {
                 throw new ApacheCloudStackClientRequestRuntimeException(statusCode, getResponseAsString(loginResponse), "login");
             }
-            logger.debug(String.format("Authentication response:[%s]", getResponseAsString(loginResponse)));
+            LOGGER.debug(String.format("Authentication response:[%s]", getResponseAsString(loginResponse)));
 
             return createHttpContextWithCookies(loginResponse);
         } catch (IOException e) {
@@ -532,7 +538,7 @@ public class ApacheCloudStackClient {
     public <T> T executeRequest(ApacheCloudStackRequest request, Class<T> clazz) {
         request.addParameter("response", "json");
         String response = executeRequest(request);
-        return gson.fromJson(response, clazz);
+        return GSON.fromJson(response, clazz);
     }
 
     /**
