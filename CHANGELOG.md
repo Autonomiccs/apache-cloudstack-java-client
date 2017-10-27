@@ -1,5 +1,12 @@
 # Change Log
 
+## [1.0.9](https://github.com/Autonomiccs/apache-cloudstack-java-client/tree/1.0.9) (2017-10-27)
+[Full Changelog](https://github.com/Autonomiccs/apache-cloudstack-java-client/compare/1.0.8...1.0.9)
+
+**Merged pull requests:**
+
+- Make 'ApacheCloudStackClient' serializable [\#34](https://github.com/Autonomiccs/apache-cloudstack-java-client/pull/34) ([rafaelweingartner](https://github.com/rafaelweingartner))
+
 ## [1.0.8](https://github.com/Autonomiccs/apache-cloudstack-java-client/tree/1.0.8) (2017-10-19)
 [Full Changelog](https://github.com/Autonomiccs/apache-cloudstack-java-client/compare/1.0.7...1.0.8)
 
